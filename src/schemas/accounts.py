@@ -18,6 +18,17 @@ from schemas.examples.accounts import (
 
 
 class UserRegistrationRequestSchema(BaseModel):
+    """
+    Schema for user registration request.
+
+    This schema defines the structure for user registration data,
+    including email and password validation.
+
+    Attributes:
+        email (EmailStr): User's email address (validated format).
+        password (str): User's password (must meet strength requirements).
+    """
+
     email: EmailStr
     password: str
 
@@ -35,6 +46,17 @@ class UserRegistrationRequestSchema(BaseModel):
 
 
 class UserRegistrationResponseSchema(BaseModel):
+    """
+    Schema for user registration response.
+
+    This schema defines the structure for the response after successful
+    user registration.
+
+    Attributes:
+        id (int): The unique identifier of the registered user.
+        email (EmailStr): The registered user's email address.
+    """
+
     id: int
     email: EmailStr
 
@@ -42,6 +64,17 @@ class UserRegistrationResponseSchema(BaseModel):
 
 
 class UserActivationRequestSchema(BaseModel):
+    """
+    Schema for user account activation request.
+
+    This schema defines the structure for activating a user account
+    using their email and activation token.
+
+    Attributes:
+        email (EmailStr): The email address of the user to activate.
+        token (str): The activation token sent to the user's email.
+    """
+
     email: EmailStr
     token: str
 
@@ -49,24 +82,66 @@ class UserActivationRequestSchema(BaseModel):
 
 
 class UserActivationResponseSchema(BaseModel):
+    """
+    Schema for user activation response.
+
+    This schema defines the structure for the response after
+    successful account activation.
+
+    Attributes:
+        message (str): A success message confirming the account activation.
+    """
+
     message: str
 
     model_config = {"json_schema_extra": {"examples": [user_activation_response_example]}}
 
 
 class PasswordResetRequestSchema(BaseModel):
+    """
+    Schema for password reset request.
+
+    This schema defines the structure for initiating a password reset
+    process using the user's email.
+
+    Attributes:
+        email (EmailStr): The email address of the user requesting a password reset.
+    """
+
     email: EmailStr
 
     model_config = {"json_schema_extra": {"examples": [password_reset_request_example]}}
 
 
 class PasswordResetResponseSchema(BaseModel):
+    """
+    Schema for password reset request response.
+
+    This schema defines the structure for the response after initiating
+    a password reset request. The message is intentionally vague for security.
+
+    Attributes:
+        message (str): A generic message about password reset instructions.
+    """
+
     message: str
 
     model_config = {"json_schema_extra": {"examples": [password_reset_response_example]}}
 
 
 class PasswordResetCompleteRequestSchema(BaseModel):
+    """
+    Schema for completing password reset.
+
+    This schema defines the structure for completing the password reset
+    process with a new password.
+
+    Attributes:
+        email (EmailStr): The user's email address.
+        token (str): The password reset token received via email.
+        password (str): The new password (must meet strength requirements).
+    """
+
     email: EmailStr
     token: str
     password: str
@@ -80,12 +155,33 @@ class PasswordResetCompleteRequestSchema(BaseModel):
 
 
 class PasswordResetCompleteResponseSchema(BaseModel):
+    """
+    Schema for password reset completion response.
+
+    This schema defines the structure for the response after
+    successfully resetting the password.
+
+    Attributes:
+        message (str): A success message confirming the password reset.
+    """
+
     message: str
 
     model_config = {"json_schema_extra": {"examples": [password_reset_complete_response_example]}}
 
 
 class LoginRequestSchema(BaseModel):
+    """
+    Schema for user login request.
+
+    This schema defines the structure for user authentication data
+    required for logging in.
+
+    Attributes:
+        email (EmailStr): The user's email address.
+        password (str): The user's password.
+    """
+
     email: EmailStr
     password: str
 
@@ -93,6 +189,18 @@ class LoginRequestSchema(BaseModel):
 
 
 class LoginResponseSchema(BaseModel):
+    """
+    Schema for login response.
+
+    This schema defines the structure for the response after successful
+    user authentication, including access and refresh tokens.
+
+    Attributes:
+        access_token (str): JWT access token for API authorization.
+        refresh_token (str): JWT refresh token for obtaining new access tokens.
+        token_type (str): The type of token (default: "bearer").
+    """
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -101,12 +209,32 @@ class LoginResponseSchema(BaseModel):
 
 
 class RefreshTokenRequestSchema(BaseModel):
+    """
+    Schema for token refresh request.
+
+    This schema defines the structure for requesting a new access token
+    using a refresh token.
+
+    Attributes:
+        refresh_token (str): The JWT refresh token obtained during login.
+    """
+
     refresh_token: str
 
     model_config = {"json_schema_extra": {"examples": [refresh_access_token_request_example]}}
 
 
 class RefreshTokenResponseSchema(BaseModel):
+    """
+    Schema for token refresh response.
+
+    This schema defines the structure for the response after successfully
+    refreshing an access token.
+
+    Attributes:
+        access_token (str): The new JWT access token.
+    """
+
     access_token: str
 
     model_config = {"json_schema_extra": {"examples": [refresh_access_token_response_example]}}
