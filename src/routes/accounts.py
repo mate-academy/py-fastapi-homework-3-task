@@ -104,13 +104,13 @@ def activate(data: UserActivate, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(
             status_code=404,
-            detail=f"User was not found.",
+            detail="User was not found.",
         )
 
     if user.is_active:
         raise HTTPException(
             status_code=400,
-            detail=f"User account is already active.",
+            detail="User account is already active.",
         )
 
     token = (
@@ -124,13 +124,13 @@ def activate(data: UserActivate, db: Session = Depends(get_db)):
     ):
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid or expired activation token.",
+            detail="Invalid or expired activation token.",
         )
 
     if token.user.email != data.email:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid or expired activation token.",
+            detail="Invalid or expired activation token.",
         )
 
     user.is_active = True
@@ -158,7 +158,7 @@ def password_reset_request(data: PasswordResetRequest, db: Session = Depends(get
                 db.add(reset_token)
                 db.commit()
                 db.refresh(reset_token)
-        except:
+        except SQLAlchemyError:
             raise HTTPException(
                 status_code=400,
                 detail="An error occurred while resetting the password.",
