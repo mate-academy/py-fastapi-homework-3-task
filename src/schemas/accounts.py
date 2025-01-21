@@ -2,18 +2,19 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from database import accounts_validators
 
+
 class BaseAuthUserSchema(BaseModel):
     email: EmailStr
     password: str
 
     @field_validator("email")
     @classmethod
-    def validate(cls, value):
+    def validate_email(cls, value):
         return accounts_validators.validate_email(value)
 
     @field_validator("password")
     @classmethod
-    def validate(cls, value):
+    def validate_password(cls, value):
         return accounts_validators.validate_password_strength(value)
 
 
@@ -53,6 +54,7 @@ class PasswordResetCompleteRequestSchema(BaseAuthUserSchema):
 
 class UserLoginRequestSchema(BaseAuthUserSchema):
     pass
+
 
 class UserLoginResponseSchema(BaseModel):
     access_token: str

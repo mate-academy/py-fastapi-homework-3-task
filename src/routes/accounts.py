@@ -26,6 +26,7 @@ from security.token_manager import JWTAuthManager
 
 router = APIRouter()
 
+
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -88,14 +89,13 @@ def activate(
 
     activation_token = db.query(ActivationTokenModel).filter_by(user_id=user.id).first()
     if (
-            not activation_token or
-            activation_token.expires_at <= datetime.now() or
-            activation_token.token != activate_data.token
+            not activation_token
+            or activation_token.expires_at <= datetime.now()
+            or activation_token.token != activate_data.token
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid or expired activation token."
-            # detail=f"Invalid or expired activation token. token: {activation_token.token}, get {activate_data.token}"
+            detail="Invalid or expired activation token."
         )
 
     if user.is_active:
@@ -110,7 +110,7 @@ def activate(
     db.commit()
 
     return {
-        "message":  "User account activated successfully."
+        "message": "User account activated successfully."
     }
 
 
@@ -162,7 +162,7 @@ def reset_password(
         )
         if not token:
             for token in db.query(PasswordResetTokenModel).filter_by(user_id=user.id).all():
-                    db.delete(token)
+                db.delete(token)
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -195,8 +195,8 @@ def login(
 ):
     user = db.query(UserModel).filter_by(email=user_data.email).first()
     if (
-        not user or
-        not user.verify_password(user_data.password)
+        not user
+        or not user.verify_password(user_data.password)
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
