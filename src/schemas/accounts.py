@@ -24,7 +24,7 @@ class UserRegistrationRequestSchema(BaseAuthUserSchema):
 
 class UserRegistrationResponseSchema(BaseModel):
     id: int
-    email: str
+    email: EmailStr
 
     model_config = {
         "from_attributes": True
