@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-
+from hmac import compare_digest
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -79,7 +79,6 @@ def activate(
         db: Session = Depends(get_db),
 ):
     user = db.query(UserModel).filter_by(email=user_data.email).first()
-    activation_token = db.query(ActivationTokenModel).filter_by(user_id=user.id).first()
 
     if not user:
         raise HTTPException(
@@ -93,13 +92,15 @@ def activate(
             detail="User account is already active."
         )
 
+    activation_token = db.query(ActivationTokenModel).filter_by(user_id=user.id).first()
+
     if not activation_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token."
         )
 
-    if user_data.token != activation_token.token:
+    if not compare_digest(user_data.token, activation_token.token):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token."
