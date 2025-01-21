@@ -1,12 +1,14 @@
+import sys
+import os
 from logging.config import fileConfig
 
 from alembic import context
+from src.database.models import movies, accounts  # noqa: F401
+from src.database.models.base import Base
+from src.database.session_postgresql import postgresql_engine
 
-from database.models import movies, accounts # noqa: F401
-from database.models.base import Base
-from database.session_postgresql import postgresql_engine
-
-
+# Add the project directory to the Python path to resolve the 'src' module.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -21,6 +23,7 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from database import (
+from src.database import (
     get_db,
     MovieModel,
     CountryModel,
@@ -10,7 +10,7 @@ from database import (
     ActorModel,
     LanguageModel
 )
-from schemas import (
+from src.schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieDetailSchema,
@@ -208,7 +208,7 @@ def create_movie(
         return MovieDetailSchema.model_validate(movie)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Invalid input data.")
+        raise HTTPException(status_code=400, detail="Invalid input data.")
 
 
 @router.get(
@@ -394,6 +394,6 @@ def update_movie(
         db.refresh(movie)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Invalid input data.")
+        raise HTTPException(status_code=400, detail="Invalid input data.")
     else:
         return {"detail": "Movie updated successfully."}
