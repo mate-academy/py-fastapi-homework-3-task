@@ -1,6 +1,14 @@
-from pydantic import BaseModel, EmailStr, field_validator, validator, ValidationError, root_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    field_validator,
+    validator,
+    ValidationError,
+    root_validator,
+)
 import re
 from database import accounts_validators
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -25,39 +33,49 @@ class UserCreate(BaseModel):
             errors.append("Password must contain at least one lower letter.")
 
         if not re.search(r"[@$!%*?#&]", password):
-            errors.append("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
+            errors.append(
+                "Password must contain at least one special character: @, $, !, %, *, ?, #, &."
+            )
 
         if errors:
             raise ValueError(" | ".join(errors))
 
         return values
 
+
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
+
 
 class UserActivate(BaseModel):
     email: EmailStr
     token: str
 
+
 class UserLogin(UserCreate):
     pass
+
 
 class UserLoginSuccess(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
 
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
 
 class PasswordResetComplete(BaseModel):
     email: EmailStr
     token: str
     password: str
 
+
 class RefreshToken(BaseModel):
     refresh_token: str
+
 
 class AccessToken(BaseModel):
     access_token: str

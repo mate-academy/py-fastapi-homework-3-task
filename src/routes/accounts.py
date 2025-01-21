@@ -63,7 +63,9 @@ def register(
             db.commit()
             db.refresh(group)
         hashed = hash_password(user.password)
-        create_user = UserModel(email=user.email, password=hashed, is_active=False, group_id=group.id)
+        create_user = UserModel(
+            email=user.email, password=hashed, is_active=False, group_id=group.id
+        )
         db.add(create_user)
         db.commit()
         db.refresh(create_user)
@@ -117,7 +119,10 @@ def activate(data: UserActivate, db: Session = Depends(get_db)):
         .first()
     )
 
-    if not token or token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):        raise HTTPException(
+    if not token or token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
+        timezone.utc
+    ):
+        raise HTTPException(
             status_code=400,
             detail=f"Invalid or expired activation token.",
         )
@@ -170,20 +175,26 @@ def password_reset_confirm(data: PasswordResetComplete, db: Session = Depends(ge
 
     if not user or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
         )
 
-    reset_token = db.query(PasswordResetTokenModel).filter(PasswordResetTokenModel.user_id == user.id).first()
+    reset_token = (
+        db.query(PasswordResetTokenModel)
+        .filter(PasswordResetTokenModel.user_id == user.id)
+        .first()
+    )
 
-    if (not reset_token or reset_token.token != data.token
-            or datetime.now(timezone.utc) > reset_token.expires_at.replace(tzinfo=timezone.utc)):
+    if (
+        not reset_token
+        or reset_token.token != data.token
+        or datetime.now(timezone.utc)
+        > reset_token.expires_at.replace(tzinfo=timezone.utc)
+    ):
         if reset_token:
             db.delete(reset_token)
             db.commit()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
         )
 
     try:
@@ -194,12 +205,10 @@ def password_reset_confirm(data: PasswordResetComplete, db: Session = Depends(ge
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while resetting the password."
+            detail="An error occurred while resetting the password.",
         )
 
-    return {
-        "message": "Password reset successfully."
-    }
+    return {"message": "Password reset successfully."}
 
 
 @router.post("/login/", response_model=UserLoginSuccess, status_code=201)
@@ -227,7 +236,9 @@ def login(
         )
     try:
         access_token = jwt_manager.create_access_token(data={"user_id": user.id})
-        refresh_token = jwt_manager.create_refresh_token(data={"user_id": user.id, "email": user.email})
+        refresh_token = jwt_manager.create_refresh_token(
+            data={"user_id": user.id, "email": user.email}
+        )
         db_refresh_token = RefreshTokenModel(token=refresh_token, user_id=user.id)
         db.add(db_refresh_token)
         db.commit()
@@ -258,23 +269,23 @@ def refresh(
             detail="Token has expired.",
         )
 
-    expected_refresh_token = db.query(RefreshTokenModel).filter(RefreshTokenModel.token == data.refresh_token).first()
+    expected_refresh_token = (
+        db.query(RefreshTokenModel)
+        .filter(RefreshTokenModel.token == data.refresh_token)
+        .first()
+    )
 
     if not expected_refresh_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
         )
 
     user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
 
-    return {
-        "access_token": access_token
-    }
+    return {"access_token": access_token}
