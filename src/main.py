@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.routes import movie_router, accounts_router
+from routes import movie_router, accounts_router
 
 app = FastAPI(
     debug=True,
