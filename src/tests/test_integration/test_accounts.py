@@ -1,11 +1,16 @@
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
-
 import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
-from database import UserModel, ActivationTokenModel, PasswordResetTokenModel, UserGroupModel, UserGroupEnum, \
+from src.database import (
+    UserModel,
+    ActivationTokenModel,
+    PasswordResetTokenModel,
+    UserGroupModel,
+    UserGroupEnum,
     RefreshTokenModel
+)
 
 
 def test_register_user_success(client, db_session, seed_user_groups):
@@ -16,11 +21,18 @@ def test_register_user_success(client, db_session, seed_user_groups):
     """
     payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
 
     response = client.post("/api/v1/accounts/register/", json=payload)
-
+    print(f"Response Status Code: {response.status_code}")
+    try:
+        response_data = response.json()
+        print("Response JSON:", response_data)
+    except Exception as e:
+        print("Failed to parse response as JSON:", e)
+        print("Response Text:", response.text)
     assert response.status_code == 201, "Expected status code 201 Created."
     response_data = response.json()
     assert response_data["email"] == payload["email"], "Returned email does not match."
@@ -57,7 +69,8 @@ def test_register_user_password_validation(client, seed_user_groups, invalid_pas
     """
     payload = {
         "email": "testuser@example.com",
-        "password": invalid_password
+        "password": invalid_password,
+        'confirm_password': invalid_password
     }
 
     response = client.post("/api/v1/accounts/register/", json=payload)
@@ -77,10 +90,12 @@ def test_register_user_conflict(client, db_session, seed_user_groups):
     """
     payload = {
         "email": "conflictuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
 
     response_first = client.post("/api/v1/accounts/register/", json=payload)
+    print(response_first.text)
     assert response_first.status_code == 201, "Expected status code 201 for the first registration."
 
     created_user = db_session.query(UserModel).filter_by(email=payload["email"]).first()
@@ -102,10 +117,11 @@ def test_register_user_internal_server_error(client, seed_user_groups):
     """
     payload = {
         "email": "erroruser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
 
-    with patch("routes.accounts.Session.commit", side_effect=SQLAlchemyError):
+    with patch("src.routes.accounts.Session.commit", side_effect=SQLAlchemyError):
         response = client.post("/api/v1/accounts/register/", json=payload)
 
         assert response.status_code == 500, "Expected status code 500 for internal server error."
@@ -127,7 +143,8 @@ def test_activate_account_success(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
 
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
@@ -164,7 +181,8 @@ def test_activate_user_with_expired_token(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert registration_response.status_code == 201, "Expected status code 201 for successful registration."
@@ -198,7 +216,8 @@ def test_activate_user_with_deleted_token(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert registration_response.status_code == 201, "Expected status code 201 for successful registration."
@@ -232,7 +251,8 @@ def test_activate_already_active_user(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert registration_response.status_code == 201, "Expected status code 201 for successful registration."
@@ -266,7 +286,8 @@ def test_request_password_reset_token_success(client, db_session, seed_user_grou
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert registration_response.status_code == 201, "Expected status code 201 for successful registration."
@@ -322,7 +343,8 @@ def test_request_password_reset_token_for_inactive_user(client, db_session, seed
     """
     registration_payload = {
         "email": "inactiveuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
 
@@ -356,7 +378,8 @@ def test_reset_password_success(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "OldPassword123!"
+        "password": "OldPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     registration_response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert registration_response.status_code == 201, "Expected status code 201 for successful registration."
@@ -423,7 +446,8 @@ def test_reset_password_invalid_token(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert response.status_code == 201, "User registration failed."
@@ -458,7 +482,8 @@ def test_reset_password_expired_token(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert response.status_code == 201, "User registration failed."
@@ -498,7 +523,8 @@ def test_reset_password_sqlalchemy_error(client, db_session, seed_user_groups):
     """
     registration_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     response = client.post("/api/v1/accounts/register/", json=registration_payload)
     assert response.status_code == 201, "User registration failed."
@@ -537,7 +563,8 @@ def test_login_user_success(client, db_session, jwt_manager, seed_user_groups):
     """
     user_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     user_group = db_session.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 
@@ -588,7 +615,8 @@ def test_login_user_invalid_cases(client, db_session, seed_user_groups):
     """
     login_payload = {
         "email": "nonexistent@example.com",
-        "password": "SomePassword123!"
+        "password": "SomePassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     response = client.post("/api/v1/accounts/login/", json=login_payload)
 
@@ -629,7 +657,8 @@ def test_login_user_inactive_account(client, db_session, seed_user_groups):
     """
     user_payload = {
         "email": "inactiveuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     user_group = db_session.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 
@@ -660,7 +689,8 @@ def test_login_user_commit_error(client, db_session, seed_user_groups):
     """
     user_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     user_group = db_session.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 
@@ -695,7 +725,8 @@ def test_refresh_access_token_success(client, db_session, jwt_manager, seed_user
     """
     user_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     user_group = db_session.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 
@@ -773,7 +804,8 @@ def test_refresh_access_token_user_not_found(client, db_session, jwt_manager, se
     """
     user_payload = {
         "email": "testuser@example.com",
-        "password": "StrongPassword123!"
+        "password": "StrongPassword123!",
+        "confirm_password": "StrongPassword123!"
     }
     user_group = db_session.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
 

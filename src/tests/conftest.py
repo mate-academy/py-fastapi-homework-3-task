@@ -2,14 +2,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import insert
 
-from config import get_settings
-from database import (
+from src.config.dependencies import get_settings
+from src.database import (
     reset_database,
     get_db_contextmanager, UserGroupEnum, UserGroupModel,
 )
-from database.populate import CSVDatabaseSeeder
-from main import app
-from security.token_manager import JWTAuthManager
+from src.database.populate import CSVDatabaseSeeder
+from src.main import app
+from src.security.token_manager import JWTAuthManager
 
 
 @pytest.fixture(scope="function", autouse=True)

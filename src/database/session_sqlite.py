@@ -3,8 +3,8 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
-from config import get_settings
-from database import Base
+from src.config import get_settings
+from src.database import Base
 
 settings = get_settings()
 
