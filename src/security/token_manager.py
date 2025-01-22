@@ -37,18 +37,16 @@ class JWTAuthManager(JWTAuthManagerInterface):
         Create a new access token with a default or specified expiration time.
         """
         return self._create_token(
-            data,
-            self._secret_key_access,
-            expires_delta or timedelta(minutes=self._ACCESS_KEY_TIMEDELTA_MINUTES))
+            data, self._secret_key_access, expires_delta or timedelta(minutes=self._ACCESS_KEY_TIMEDELTA_MINUTES)
+        )
 
     def create_refresh_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
         """
         Create a new refresh token with a default or specified expiration time.
         """
         return self._create_token(
-            data,
-            self._secret_key_refresh,
-            expires_delta or timedelta(minutes=self._REFRESH_KEY_TIMEDELTA_MINUTES))
+            data, self._secret_key_refresh, expires_delta or timedelta(minutes=self._REFRESH_KEY_TIMEDELTA_MINUTES)
+        )
 
     def decode_access_token(self, token: str) -> dict:
         """

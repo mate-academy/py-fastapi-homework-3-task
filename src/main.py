@@ -2,10 +2,7 @@ from fastapi import FastAPI
 
 from routes import movie_router, accounts_router
 
-app = FastAPI(
-    title="Movies homework",
-    description="Description of project"
-)
+app = FastAPI(title="Movies homework", description="Description of project")
 
 api_version_prefix = "/api/v1"
 

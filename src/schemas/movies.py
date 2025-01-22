@@ -13,7 +13,7 @@ from schemas.examples.movies import (
     movie_list_response_schema_example,
     movie_create_schema_example,
     movie_detail_schema_example,
-    movie_update_schema_example
+    movie_update_schema_example,
 )
 
 
@@ -21,14 +21,7 @@ class LanguageSchema(BaseModel):
     id: int
     name: str
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                language_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [language_schema_example]}}
 
 
 class CountrySchema(BaseModel):
@@ -36,42 +29,21 @@ class CountrySchema(BaseModel):
     code: str
     name: Optional[str]
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                country_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [country_schema_example]}}
 
 
 class GenreSchema(BaseModel):
     id: int
     name: str
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                genre_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [genre_schema_example]}}
 
 
 class ActorSchema(BaseModel):
     id: int
     name: str
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                actor_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [actor_schema_example]}}
 
 
 class MovieBaseSchema(BaseModel):
@@ -83,9 +55,7 @@ class MovieBaseSchema(BaseModel):
     budget: float = Field(..., ge=0)
     revenue: float = Field(..., ge=0)
 
-    model_config = {
-        "from_attributes": True
-    }
+    model_config = {"from_attributes": True}
 
     @field_validator("date")
     @classmethod
@@ -103,14 +73,7 @@ class MovieDetailSchema(MovieBaseSchema):
     actors: List[ActorSchema]
     languages: List[LanguageSchema]
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_detail_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [movie_detail_schema_example]}}
 
 
 class MovieListItemSchema(BaseModel):
@@ -120,14 +83,7 @@ class MovieListItemSchema(BaseModel):
     score: float
     overview: str
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_item_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [movie_item_schema_example]}}
 
 
 class MovieListResponseSchema(BaseModel):
@@ -137,14 +93,8 @@ class MovieListResponseSchema(BaseModel):
     total_pages: int
     total_items: int
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_list_response_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [movie_list_response_schema_example]}}
+
 
 class MovieCreateSchema(BaseModel):
     name: str
@@ -159,14 +109,7 @@ class MovieCreateSchema(BaseModel):
     actors: List[str]
     languages: List[str]
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_create_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [movie_create_schema_example]}}
 
     @field_validator("country", mode="before")
     @classmethod
@@ -188,11 +131,4 @@ class MovieUpdateSchema(BaseModel):
     budget: Optional[float] = Field(None, ge=0)
     revenue: Optional[float] = Field(None, ge=0)
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_update_schema_example
-            ]
-        }
-    }
+    model_config = {"from_attributes": True, "json_schema_extra": {"examples": [movie_update_schema_example]}}

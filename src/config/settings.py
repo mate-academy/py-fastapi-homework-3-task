@@ -30,9 +30,5 @@ class TestingSettings(BaseAppSettings):
     JWT_SIGNING_ALGORITHM: str = "HS256"
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
-        object.__setattr__(self, 'PATH_TO_DB', ":memory:")
-        object.__setattr__(
-            self,
-            'PATH_TO_MOVIES_CSV',
-            str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv")
-        )
+        object.__setattr__(self, "PATH_TO_DB", ":memory:")
+        object.__setattr__(self, "PATH_TO_MOVIES_CSV", str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv"))
