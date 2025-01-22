@@ -210,6 +210,7 @@ def create_movie(
         db.rollback()
         raise HTTPException(status_code=400, detail="Invalid input data.")
 
+
 @router.get(
     "/movies/{movie_id}/",
     response_model=MovieDetailSchema,

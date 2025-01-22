@@ -18,6 +18,7 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import BaseSecurityError, TokenExpiredError
+
 from schemas import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -27,8 +28,9 @@ from schemas import (
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema, UserActivationRequestSchema
+)
 
-)from security.interfaces import JWTAuthManagerInterface
+from security.interfaces import JWTAuthManagerInterface
 from security.utils import generate_secure_token
 
 router = APIRouter()
