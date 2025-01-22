@@ -15,7 +15,7 @@ from database import (
     LanguageModel,
     MoviesLanguagesModel,
     UserGroupEnum,
-    UserGroupModel
+    UserGroupModel,
 )
 
 
@@ -40,20 +40,20 @@ class CSVDatabaseSeeder:
 
     def _preprocess_csv(self):
         data = pd.read_csv(self._csv_file_path)
-        data = data.drop_duplicates(subset=['names', 'date_x'], keep='first')
+        data = data.drop_duplicates(subset=["names", "date_x"], keep="first")
 
-        data['crew'] = data['crew'].fillna('Unknown')
-        data['crew'] = data['crew'].str.replace(r'\s+', '', regex=True)
-        data['crew'] = data['crew'].apply(
-            lambda crew: ','.join(sorted(set(crew.split(',')))) if crew != 'Unknown' else crew
+        data["crew"] = data["crew"].fillna("Unknown")
+        data["crew"] = data["crew"].str.replace(r"\s+", "", regex=True)
+        data["crew"] = data["crew"].apply(
+            lambda crew: ",".join(sorted(set(crew.split(",")))) if crew != "Unknown" else crew
         )
-        data['genre'] = data['genre'].fillna('Unknown')
-        data['genre'] = data['genre'].str.replace('\u00A0', '', regex=True)
-        data['date_x'] = data['date_x'].str.strip()
-        data['date_x'] = pd.to_datetime(data['date_x'], format='%Y-%m-%d', errors='raise')
-        data['date_x'] = data['date_x'].dt.date
-        data['orig_lang'] = data['orig_lang'].str.replace(r'\s+', '', regex=True)
-        data['status'] = data['status'].str.strip()
+        data["genre"] = data["genre"].fillna("Unknown")
+        data["genre"] = data["genre"].str.replace("\u00A0", "", regex=True)
+        data["date_x"] = data["date_x"].str.strip()
+        data["date_x"] = pd.to_datetime(data["date_x"], format="%Y-%m-%d", errors="raise")
+        data["date_x"] = data["date_x"].dt.date
+        data["orig_lang"] = data["orig_lang"].str.replace(r"\s+", "", regex=True)
+        data["status"] = data["status"].str.strip()
         print("Preprocessing csv file")
 
         data.to_csv(self._csv_file_path, index=False)
@@ -86,27 +86,19 @@ class CSVDatabaseSeeder:
 
             data = self._preprocess_csv()
 
-            countries = data['country'].unique()
+            countries = data["country"].unique()
             genres = set(
-                genre.strip()
-                for genres in data['genre'].dropna() for genre in genres.split(',')
-                if genre.strip()
+                genre.strip() for genres in data["genre"].dropna() for genre in genres.split(",") if genre.strip()
             )
-            actors = set(
-                actor.strip()
-                for crew in data['crew'].dropna() for actor in crew.split(',')
-                if actor.strip()
-            )
+            actors = set(actor.strip() for crew in data["crew"].dropna() for actor in crew.split(",") if actor.strip())
             languages = set(
-                lang.strip()
-                for langs in data['orig_lang'].dropna() for lang in langs.split(',')
-                if lang.strip()
+                lang.strip() for langs in data["orig_lang"].dropna() for lang in langs.split(",") if lang.strip()
             )
 
-            country_map = self._get_or_create_bulk(CountryModel, countries, 'code')
-            genre_map = self._get_or_create_bulk(GenreModel, list(genres), 'name')
-            actor_map = self._get_or_create_bulk(ActorModel, list(actors), 'name')
-            language_map = self._get_or_create_bulk(LanguageModel, list(languages), 'name')
+            country_map = self._get_or_create_bulk(CountryModel, countries, "code")
+            genre_map = self._get_or_create_bulk(GenreModel, list(genres), "name")
+            actor_map = self._get_or_create_bulk(ActorModel, list(actors), "name")
+            language_map = self._get_or_create_bulk(LanguageModel, list(languages), "name")
 
             movies_data = []
             movie_genres_data = []
@@ -114,17 +106,17 @@ class CSVDatabaseSeeder:
             movie_languages_data = []
 
             for _, row in tqdm(data.iterrows(), total=data.shape[0], desc="Processing movies"):
-                country = country_map[row['country']]
+                country = country_map[row["country"]]
 
                 movie = {
-                    "name": row['names'],
-                    "date": row['date_x'],
-                    "score": float(row['score']),
-                    "overview": row['overview'],
-                    "status": row['status'],
-                    "budget": float(row['budget_x']),
-                    "revenue": float(row['revenue']),
-                    "country_id": country.id
+                    "name": row["names"],
+                    "date": row["date_x"],
+                    "score": float(row["score"]),
+                    "overview": row["overview"],
+                    "status": row["status"],
+                    "budget": float(row["budget_x"]),
+                    "revenue": float(row["revenue"]),
+                    "country_id": country.id,
                 }
                 movies_data.append(movie)
 
@@ -134,17 +126,17 @@ class CSVDatabaseSeeder:
             for i, (_, row) in enumerate(tqdm(data.iterrows(), total=data.shape[0], desc="Processing associations")):
                 movie_id = movie_ids[i]
 
-                for genre_name in row['genre'].split(','):
+                for genre_name in row["genre"].split(","):
                     if genre_name.strip():
                         genre = genre_map[genre_name.strip()]
                         movie_genres_data.append({"movie_id": movie_id, "genre_id": genre.id})
 
-                for actor_name in row['crew'].split(','):
+                for actor_name in row["crew"].split(","):
                     if actor_name.strip():
                         actor = actor_map[actor_name.strip()]
                         movie_actors_data.append({"movie_id": movie_id, "actor_id": actor.id})
 
-                for lang_name in row['orig_lang'].split(','):
+                for lang_name in row["orig_lang"].split(","):
                     if lang_name.strip():
                         language = language_map[lang_name.strip()]
                         movie_languages_data.append({"movie_id": movie_id, "language_id": language.id})
@@ -160,6 +152,7 @@ class CSVDatabaseSeeder:
         except Exception as e:
             print(f"Unexpected error: {e}")
             raise
+
 
 def main():
     settings = get_settings()
