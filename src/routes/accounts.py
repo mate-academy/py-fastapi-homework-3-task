@@ -93,7 +93,7 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
             detail="Invalid or expired activation token."
         )
     if (
-            user.activation_token.expires_at < datetime.now(timezone.utc)
+            utc.localize(user.activation_token.expires_at) < datetime.now(timezone.utc)
             or user.activation_token.token != activation_data.token
     ):
         raise HTTPException(
@@ -145,7 +145,7 @@ def password_reset_completion(
     if not (
             user.password_reset_token
             and user.password_reset_token.token == data.token
-            and user.password_reset_token.expires_at > datetime.now(timezone.utc)
+            and utc.localize(user.password_reset_token.expires_at) > datetime.now(timezone.utc)
     ):
         if user.password_reset_token:
             db.delete(user.password_reset_token)
