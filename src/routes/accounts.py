@@ -1,9 +1,9 @@
+from typing import cast
 from fastapi import APIRouter, Depends, status, HTTPException
 from jose import ExpiredSignatureError, JWTError
 from pytz import utc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
 from exceptions import BaseSecurityError, TokenExpiredError
 from schemas import (
     UserRegistrationRequestSchema,
@@ -17,8 +17,10 @@ from schemas import (
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.utils import generate_secure_token
+from datetime import datetime, timezone
 
 router = APIRouter()
+
 
 @router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
 def register(register_data: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
@@ -26,7 +28,7 @@ def register(register_data: UserRegistrationRequestSchema, db: Session = Depends
     if user_exist:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"A user with the email {register_data.email} already exists."
+            detail=f"A user with email {register_data.email} already exists."
         )
     user_group = db.query(UserGroupModel).filter_by(name=UserGroupEnum.USER).first()
     try:
@@ -46,12 +48,13 @@ def register(register_data: UserRegistrationRequestSchema, db: Session = Depends
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred during user creation."
+            detail="Error occurred during user registration."
         )
     return {
         "id": user.id,
         "email": user.email
     }
+
 
 @router.post("/activate/")
 def activate_user(activation_data: UserActivationRequestSchema, db: Session = Depends(get_db)):
@@ -59,7 +62,7 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
     if user.is_active:
         raise HTTPException(
             status_code=400,
-            detail="The account is already activated."
+            detail="User account is already activated."
         )
     if not user.activation_token:
         raise HTTPException(
@@ -78,8 +81,9 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
     user.activation_token = None
     db.commit()
     return {
-        "message": "Account successfully activated."
+        "message": "User account has been successfully activated."
     }
+
 
 @router.post("/password-reset/request/")
 def password_reset_request(data: PasswordResetRequestSchema, db: Session = Depends(get_db)):
@@ -96,8 +100,9 @@ def password_reset_request(data: PasswordResetRequestSchema, db: Session = Depen
         db.commit()
         db.refresh(user)
     return {
-        "message": "If you are registered, you will receive an email with instructions."
+        "message": "If you are registered, an email with instructions has been sent."
     }
+
 
 @router.post("/reset-password/complete/")
 def password_reset_completion(
@@ -132,8 +137,9 @@ def password_reset_completion(
             detail="An error occurred while resetting the password."
         )
     return {
-        "message": "Password reset successfully."
+        "message": "Password has been successfully reset."
     }
+
 
 @router.post("/login/", response_model=UserLoginResponseSchema, status_code=status.HTTP_201_CREATED)
 def login(
@@ -150,7 +156,7 @@ def login(
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="The account is not activated."
+            detail="User account is not activated."
         )
     try:
         access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
@@ -169,8 +175,9 @@ def login(
     except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing the request."
+            detail="An error occurred during login."
         )
+
 
 @router.post("/refresh/", response_model=TokenRefreshResponseSchema)
 def refresh(
