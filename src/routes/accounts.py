@@ -208,7 +208,7 @@ def refresh_token(
     except BaseSecurityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="fToken has expired.",
+            detail="Token has expired.",
         )
 
     expected_refresh_token = (
