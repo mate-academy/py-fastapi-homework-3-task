@@ -44,7 +44,8 @@ router = APIRouter()
 )
 def get_movie_list(
         page: int = Query(1, ge=1, description="Page number (1-based index)"),
-        per_page: int = Query(10, ge=1, le=20, description="Number of items per page"),
+        per_page: int = Query(10, ge=1, le=20,
+                              description="Number of items per page"),
         db: Session = Depends(get_db),
 ) -> MovieListResponseSchema:
     """
@@ -155,7 +156,8 @@ def create_movie(
         )
 
     try:
-        country = db.query(CountryModel).filter_by(code=movie_data.country).first()
+        country = db.query(CountryModel).filter_by(
+            code=movie_data.country).first()
         if not country:
             country = CountryModel(code=movie_data.country)
             db.add(country)
@@ -181,7 +183,8 @@ def create_movie(
 
         languages = []
         for language_name in movie_data.languages:
-            language = db.query(LanguageModel).filter_by(name=language_name).first()
+            language = db.query(LanguageModel).filter_by(
+                name=language_name).first()
             if not language:
                 language = LanguageModel(name=language_name)
                 db.add(language)
@@ -208,7 +211,7 @@ def create_movie(
         return MovieDetailSchema.model_validate(movie)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Invalid input data.")
+        raise HTTPException(status_code=400, detail="Invalid input data.")
 
 
 @router.get(
@@ -226,7 +229,8 @@ def create_movie(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."}
                 }
             },
         }
@@ -277,9 +281,9 @@ def get_movie_by_id(
     "/movies/{movie_id}/",
     summary="Delete a movie by ID",
     description=(
-        "<h3>Delete a specific movie from the database by its unique ID.</h3>"
-        "<p>If the movie exists, it will be deleted. If it does not exist, "
-        "a 404 error will be returned.</p>"
+            "<h3>Delete a specific movie from the database by its unique ID.</h3>"
+            "<p>If the movie exists, it will be deleted. If it does not exist, "
+            "a 404 error will be returned.</p>"
     ),
     responses={
         204: {
@@ -289,7 +293,8 @@ def get_movie_by_id(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."}
                 }
             },
         },
@@ -297,8 +302,8 @@ def get_movie_by_id(
     status_code=204
 )
 def delete_movie(
-    movie_id: int,
-    db: Session = Depends(get_db),
+        movie_id: int,
+        db: Session = Depends(get_db),
 ):
     """
     Delete a specific movie by its ID.
@@ -333,9 +338,9 @@ def delete_movie(
     "/movies/{movie_id}/",
     summary="Update a movie by ID",
     description=(
-        "<h3>Update details of a specific movie by its unique ID.</h3>"
-        "<p>This endpoint updates the details of an existing movie. If the movie with "
-        "the given ID does not exist, a 404 error is returned.</p>"
+            "<h3>Update details of a specific movie by its unique ID.</h3>"
+            "<p>This endpoint updates the details of an existing movie. If the movie with "
+            "the given ID does not exist, a 404 error is returned.</p>"
     ),
     responses={
         200: {
@@ -350,16 +355,17 @@ def delete_movie(
             "description": "Movie not found.",
             "content": {
                 "application/json": {
-                    "example": {"detail": "Movie with the given ID was not found."}
+                    "example": {
+                        "detail": "Movie with the given ID was not found."}
                 }
             },
         },
     }
 )
 def update_movie(
-    movie_id: int,
-    movie_data: MovieUpdateSchema,
-    db: Session = Depends(get_db),
+        movie_id: int,
+        movie_data: MovieUpdateSchema,
+        db: Session = Depends(get_db),
 ):
     """
     Update a specific movie by its ID.
@@ -394,6 +400,6 @@ def update_movie(
         db.refresh(movie)
     except IntegrityError:
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Invalid input data.")
+        raise HTTPException(status_code=400, detail="Invalid input data.")
     else:
         return {"detail": "Movie updated successfully."}
