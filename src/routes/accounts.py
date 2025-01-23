@@ -230,7 +230,7 @@ def login(
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid email or password."
+            detail="Invalid email or password."
         )
 
     return UserLoginResponseSchema(
