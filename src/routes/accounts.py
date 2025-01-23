@@ -221,6 +221,7 @@ def reset_password(
             detail="Invalid email or token."
         )
     expired_at = reset_token.expires_at
+
     if expired_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         db.delete(reset_token)
         db.commit()
@@ -228,6 +229,7 @@ def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email or token."
         )
+
     try:
         user.password = user_data.password
         db.delete(reset_token)

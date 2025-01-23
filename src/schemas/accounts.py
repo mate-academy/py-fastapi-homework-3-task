@@ -23,7 +23,7 @@ class UserRegistrationRequestSchema(BaseAuthUserSchema):
 
 class UserRegistrationResponseSchema(BaseModel):
     id: int
-    email: str
+    email: EmailStr
 
 
 class UserLoginRequestSchema(BaseAuthUserSchema):
