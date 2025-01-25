@@ -156,8 +156,11 @@ def activate_account(
         ActivationTokenModel.token == activation_data.token
     ).first()
 
-    if (not token_record or
-            cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)):
+    if (not token_record or cast(
+            datetime,
+            token_record.expires_at
+    ).replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)):
+
         if token_record:
             db.delete(token_record)
             db.commit()
