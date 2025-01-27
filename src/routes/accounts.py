@@ -1,5 +1,4 @@
-from datetime import datetime, timezone, timedelta
-from typing import cast
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,7 +20,6 @@ from security.interfaces import JWTAuthManagerInterface
 from src.schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
-    ActivationTokenSchema,
     UserActivationRequestSchema,
     MessageResponseSchema,
     PasswordResetRequestSchema,

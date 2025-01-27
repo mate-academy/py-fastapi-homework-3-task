@@ -18,12 +18,6 @@ class BaseSchema(BaseModel):
         return accounts_validators.validate_password_strength(value)
 
 
-class ActivationTokenSchema(BaseSchema):
-    email: EmailStr
-    password: str
-    token: str
-
-
 class UserRegistrationRequestSchema(BaseSchema):
     pass
 
