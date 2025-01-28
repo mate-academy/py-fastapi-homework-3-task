@@ -27,6 +27,8 @@ from schemas.accounts import (
     PasswordResetCompleteRequestSchema,
     UserLoginResponseSchema,
     UserLoginRequestSchema,
+    TokenRefreshResponseSchema,
+    TokenRefreshRequestSchema,
 )
 
 router = APIRouter()
@@ -184,4 +186,44 @@ def login_user(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer"
+    )
+
+
+@router.post(
+    "/refresh/",
+    response_model=TokenRefreshResponseSchema,
+    status_code=200
+)
+def access_token_refresh(
+    token_request_data: TokenRefreshRequestSchema,
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    db: Session = Depends(get_db)
+):
+    try:
+        token_data = jwt_auth_manager.decode_refresh_token(token_request_data.refresh_token)
+        user_id = token_data["user_id"]
+    except BaseSecurityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired.",
+        )
+
+    expected_refresh_token = db.query(RefreshTokenModel).filter_by(
+        token=token_request_data.refresh_token
+    ).first()
+
+    if not expected_refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found."
+        )
+
+    user = db.query(UserModel).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
+    access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
+
+    return TokenRefreshResponseSchema(
+        access_token=access_token
     )
