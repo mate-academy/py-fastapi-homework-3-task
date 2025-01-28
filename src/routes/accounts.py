@@ -23,6 +23,7 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     MessageResponseSchema,
     UserActivationRequestSchema,
+    PasswordResetRequestSchema,
 )
 
 router = APIRouter()
@@ -91,4 +92,26 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
         db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred during account activation.")
 
-    return MessageResponseSchema
+    return MessageResponseSchema(
+        message="User account activated successfully."
+    )
+
+
+@router.post("/password-reset/request/", status_code=200)
+def password_reset_request(data: PasswordResetRequestSchema, db: Session = Depends(get_db)):
+    db_user = db.query(UserModel).filter_by(email=data.email).first()
+
+    if db_user and db_user.is_active:
+        try:
+            if db_user.password_reset_token:
+                db.delete(db_user.password_reset_token)
+            new_password_reset_token = PasswordResetTokenModel(user=db_user)
+            db.add(new_password_reset_token)
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            raise HTTPException(status_code=500, detail="An error occurred during account password reset.")
+
+    return MessageResponseSchema(
+        message="If you are registered, you will receive an email with instructions."
+    )

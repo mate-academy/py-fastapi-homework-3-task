@@ -29,4 +29,8 @@ class UserActivationRequestSchema(BaseModel):
 
 
 class MessageResponseSchema(BaseModel):
-    message: str = "User account activated successfully."
+    message: str
+
+
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
