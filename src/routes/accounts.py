@@ -24,6 +24,7 @@ from schemas.accounts import (
     MessageResponseSchema,
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema,
 )
 
 router = APIRouter()
@@ -97,9 +98,13 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
     )
 
 
-@router.post("/password-reset/request/", status_code=200)
-def password_reset_request(data: PasswordResetRequestSchema, db: Session = Depends(get_db)):
-    db_user = db.query(UserModel).filter_by(email=data.email).first()
+@router.post(
+    "/password-reset/request/",
+    response_model=MessageResponseSchema,
+    status_code=200
+)
+def password_reset_request(reset_data: PasswordResetRequestSchema, db: Session = Depends(get_db)):
+    db_user = db.query(UserModel).filter_by(email=reset_data.email).first()
 
     if db_user and db_user.is_active:
         try:
@@ -114,4 +119,34 @@ def password_reset_request(data: PasswordResetRequestSchema, db: Session = Depen
 
     return MessageResponseSchema(
         message="If you are registered, you will receive an email with instructions."
+    )
+
+
+@router.post(
+    "/reset-password/complete/",
+    response_model=MessageResponseSchema,
+    status_code=200
+)
+def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema, db: Session = Depends(get_db)):
+    db_user = db.query(UserModel).filter_by(email=reset_data.email).first()
+    if not db_user or not db_user.is_active:
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
+
+    reset_token = db.query(PasswordResetTokenModel).filter_by(user=db_user).first()
+    if not reset_token or reset_data.token != reset_token.token or datetime.now(timezone.utc) > reset_token.expires_at.replace(tzinfo=timezone.utc):
+        if reset_token:
+            db.delete(reset_token)
+            db.commit()
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
+
+    try:
+        db_user.password = reset_data.password
+        db.delete(reset_token)
+        db.commit()
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
+
+    return MessageResponseSchema(
+        message="Password reset successfully."
     )
