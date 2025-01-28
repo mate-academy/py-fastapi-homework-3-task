@@ -137,7 +137,8 @@ def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema, db: 
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     reset_token = db.query(PasswordResetTokenModel).filter_by(user=db_user).first()
-    if not reset_token or reset_data.token != reset_token.token or datetime.now(timezone.utc) > reset_token.expires_at.replace(tzinfo=timezone.utc):
+    if (not reset_token or reset_data.token != reset_token.token
+            or datetime.now(timezone.utc) > reset_token.expires_at.replace(tzinfo=timezone.utc)):
         if reset_token:
             db.delete(reset_token)
             db.commit()

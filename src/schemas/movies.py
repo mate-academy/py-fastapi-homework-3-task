@@ -146,6 +146,7 @@ class MovieListResponseSchema(BaseModel):
         }
     }
 
+
 class MovieCreateSchema(BaseModel):
     name: str
     date: date
