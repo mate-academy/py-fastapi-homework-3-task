@@ -21,3 +21,12 @@ class UserRegistrationRequestSchema(BaseModel):
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
+
+
+class UserActivationRequestSchema(BaseModel):
+    email: EmailStr
+    token: str
+
+
+class MessageResponseSchema(BaseModel):
+    message: str = "User account activated successfully."
