@@ -27,7 +27,8 @@ from security.passwords import hash_password
 
 router = APIRouter()
 
-@router.post("/register/", response_model=UserRegistrationResponseSchema,status_code=status.HTTP_201_CREATED)
+
+@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
 def register_user(user_data: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.email == user_data.email).first()
 
@@ -72,9 +73,8 @@ def register_user(user_data: UserRegistrationRequestSchema, db: Session = Depend
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"An error occurred during user creation."
+            detail="An error occurred during user creation."
         )
-
 
 
 @router.post("/activate/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
@@ -245,5 +245,3 @@ def token_refresh(
     return {
         "access_token": access_token
     }
-
-
