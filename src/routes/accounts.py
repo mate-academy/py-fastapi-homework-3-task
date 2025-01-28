@@ -25,6 +25,8 @@ from schemas.accounts import (
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
+    UserLoginResponseSchema,
+    UserLoginRequestSchema,
 )
 
 router = APIRouter()
@@ -149,4 +151,37 @@ def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema, db: 
 
     return MessageResponseSchema(
         message="Password reset successfully."
+    )
+
+
+@router.post(
+    "/login/",
+    response_model=UserLoginResponseSchema,
+    status_code=201
+)
+def login_user(
+    user_data: UserLoginRequestSchema,
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    db: Session = Depends(get_db)
+):
+    db_user = db.query(UserModel).filter_by(email=user_data.email).first()
+    if not db_user or not db_user.verify_password(user_data.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+    if not db_user.is_active:
+        raise HTTPException(status_code=403, detail="User account is not activated.")
+
+    try:
+        access_token = jwt_auth_manager.create_access_token({"user_id": db_user.id})
+        refresh_token = jwt_auth_manager.create_refresh_token({"user_id": db_user.id})
+
+        refresh_token_record = RefreshTokenModel(user=db_user, token=refresh_token)
+        db.add(refresh_token_record)
+        db.commit()
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
+
+    return UserLoginResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
     )
