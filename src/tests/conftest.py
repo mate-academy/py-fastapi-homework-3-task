@@ -5,7 +5,9 @@ from sqlalchemy import insert
 from config import get_settings
 from database import (
     reset_database,
-    get_db_contextmanager, UserGroupEnum, UserGroupModel,
+    get_db_contextmanager,
+    UserGroupEnum,
+    UserGroupModel,
 )
 from database.populate import CSVDatabaseSeeder
 from main import app
@@ -35,7 +37,7 @@ def jwt_manager():
     return JWTAuthManager(
         secret_key_access=settings.SECRET_KEY_ACCESS,
         secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM
+        algorithm=settings.JWT_SIGNING_ALGORITHM,
     )
 
 
@@ -50,7 +52,9 @@ def seed_user_groups(db_session):
 @pytest.fixture(scope="function")
 def seed_database(db_session):
     settings = get_settings()
-    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session)
+    seeder = CSVDatabaseSeeder(
+        csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session
+    )
     if not seeder.is_db_populated():
         seeder.seed()
     yield db_session
