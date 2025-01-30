@@ -45,12 +45,14 @@ class CSVDatabaseSeeder:
         data['crew'] = data['crew'].fillna('Unknown')
         data['crew'] = data['crew'].str.replace(r'\s+', '', regex=True)
         data['crew'] = data['crew'].apply(
-            lambda crew: ','.join(sorted(set(crew.split(',')))) if crew != 'Unknown' else crew
+            lambda crew: ','.join(
+                sorted(set(crew.split(',')))) if crew != 'Unknown' else crew
         )
         data['genre'] = data['genre'].fillna('Unknown')
         data['genre'] = data['genre'].str.replace('\u00A0', '', regex=True)
         data['date_x'] = data['date_x'].str.strip()
-        data['date_x'] = pd.to_datetime(data['date_x'], format='%Y-%m-%d', errors='raise')
+        data['date_x'] = pd.to_datetime(data['date_x'], format='%Y-%m-%d',
+                                        errors='raise')
         data['date_x'] = data['date_x'].dt.date
         data['orig_lang'] = data['orig_lang'].str.replace(r'\s+', '', regex=True)
         data['status'] = data['status'].str.strip()
@@ -61,7 +63,8 @@ class CSVDatabaseSeeder:
         return data
 
     def _get_or_create_bulk(self, model, items: list, unique_field: str):
-        existing = self._db_session.query(model).filter(getattr(model, unique_field).in_(items)).all()
+        existing = self._db_session.query(model).filter(
+            getattr(model, unique_field).in_(items)).all()
         existing_dict = {getattr(item, unique_field): item for item in existing}
 
         new_items = [item for item in items if item not in existing_dict]
@@ -71,8 +74,10 @@ class CSVDatabaseSeeder:
             self._db_session.execute(insert(model).values(new_records))
             self._db_session.flush()
 
-            newly_inserted = self._db_session.query(model).filter(getattr(model, unique_field).in_(new_items)).all()
-            existing_dict.update({getattr(item, unique_field): item for item in newly_inserted})
+            newly_inserted = self._db_session.query(model).filter(
+                getattr(model, unique_field).in_(new_items)).all()
+            existing_dict.update(
+                {getattr(item, unique_field): item for item in newly_inserted})
 
         return existing_dict
 
@@ -106,14 +111,16 @@ class CSVDatabaseSeeder:
             country_map = self._get_or_create_bulk(CountryModel, countries, 'code')
             genre_map = self._get_or_create_bulk(GenreModel, list(genres), 'name')
             actor_map = self._get_or_create_bulk(ActorModel, list(actors), 'name')
-            language_map = self._get_or_create_bulk(LanguageModel, list(languages), 'name')
+            language_map = self._get_or_create_bulk(LanguageModel, list(languages),
+                                                    'name')
 
             movies_data = []
             movie_genres_data = []
             movie_actors_data = []
             movie_languages_data = []
 
-            for _, row in tqdm(data.iterrows(), total=data.shape[0], desc="Processing movies"):
+            for _, row in tqdm(data.iterrows(), total=data.shape[0],
+                               desc="Processing movies"):
                 country = country_map[row['country']]
 
                 movie = {
@@ -128,30 +135,38 @@ class CSVDatabaseSeeder:
                 }
                 movies_data.append(movie)
 
-            result = self._db_session.execute(insert(MovieModel).returning(MovieModel.id), movies_data)
+            result = self._db_session.execute(
+                insert(MovieModel).returning(MovieModel.id), movies_data)
             movie_ids = result.scalars().all()
 
-            for i, (_, row) in enumerate(tqdm(data.iterrows(), total=data.shape[0], desc="Processing associations")):
+            for i, (_, row) in enumerate(tqdm(data.iterrows(), total=data.shape[0],
+                                              desc="Processing associations")):
                 movie_id = movie_ids[i]
 
                 for genre_name in row['genre'].split(','):
                     if genre_name.strip():
                         genre = genre_map[genre_name.strip()]
-                        movie_genres_data.append({"movie_id": movie_id, "genre_id": genre.id})
+                        movie_genres_data.append(
+                            {"movie_id": movie_id, "genre_id": genre.id})
 
                 for actor_name in row['crew'].split(','):
                     if actor_name.strip():
                         actor = actor_map[actor_name.strip()]
-                        movie_actors_data.append({"movie_id": movie_id, "actor_id": actor.id})
+                        movie_actors_data.append(
+                            {"movie_id": movie_id, "actor_id": actor.id})
 
                 for lang_name in row['orig_lang'].split(','):
                     if lang_name.strip():
                         language = language_map[lang_name.strip()]
-                        movie_languages_data.append({"movie_id": movie_id, "language_id": language.id})
+                        movie_languages_data.append(
+                            {"movie_id": movie_id, "language_id": language.id})
 
-            self._db_session.execute(insert(MoviesGenresModel).values(movie_genres_data))
-            self._db_session.execute(insert(ActorsMoviesModel).values(movie_actors_data))
-            self._db_session.execute(insert(MoviesLanguagesModel).values(movie_languages_data))
+            self._db_session.execute(
+                insert(MoviesGenresModel).values(movie_genres_data))
+            self._db_session.execute(
+                insert(ActorsMoviesModel).values(movie_actors_data))
+            self._db_session.execute(
+                insert(MoviesLanguagesModel).values(movie_languages_data))
             self._db_session.commit()
 
         except SQLAlchemyError as e:
@@ -160,6 +175,7 @@ class CSVDatabaseSeeder:
         except Exception as e:
             print(f"Unexpected error: {e}")
             raise
+
 
 def main():
     settings = get_settings()

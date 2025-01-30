@@ -92,7 +92,8 @@ class MovieBaseSchema(BaseModel):
     def validate_date(cls, value):
         current_year = datetime.now().year
         if value.year > current_year + 1:
-            raise ValueError(f"The year in 'date' cannot be greater than {current_year + 1}.")
+            raise ValueError(
+                f"The year in 'date' cannot be greater than {current_year + 1}.")
         return value
 
 
@@ -145,6 +146,7 @@ class MovieListResponseSchema(BaseModel):
             ]
         }
     }
+
 
 class MovieCreateSchema(BaseModel):
     name: str
