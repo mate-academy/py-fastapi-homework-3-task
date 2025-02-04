@@ -93,7 +93,7 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
             detail="Invalid or expired activation token."
         )
     if (
-            user.activation_token.expires_at < datetime.now(timezone.utc)
+            utc.localize(user.activation_token.expires_at) < datetime.now(timezone.utc)
             or user.activation_token.token != activation_data.token
     ):
         raise HTTPException(
