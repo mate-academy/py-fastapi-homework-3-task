@@ -93,7 +93,7 @@ def activate_user(activation_data: UserActivationRequestSchema, db: Session = De
             detail="Invalid or expired activation token."
         )
     if (
-            utc.localize(user.activation_token.expires_at) < datetime.now(timezone.utc)
+            user.activation_token.expires_at < datetime.now(timezone.utc)
             or user.activation_token.token != activation_data.token
     ):
         raise HTTPException(
@@ -161,6 +161,7 @@ def password_reset_completion(
         db.commit()
 
     except SQLAlchemyError:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password."

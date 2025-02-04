@@ -24,7 +24,7 @@ class UserRegistrationResponseSchema(BaseModel):
 
 
 class UserActivationRequestSchema(BaseModel):
-    email: str
+    email: EmailStr
     token: str
 
 
