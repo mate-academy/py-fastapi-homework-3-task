@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.config import get_jwt_auth_manager
-from src.database import (
+from config import get_jwt_auth_manager
+from database import (
     get_db,
     UserModel,
     UserGroupModel,
