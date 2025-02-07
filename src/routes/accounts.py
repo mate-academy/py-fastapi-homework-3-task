@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
-from typing import cast
 from pytz import utc
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from src.config import get_jwt_auth_manager, get_settings, BaseAppSettings
+from src.config import get_jwt_auth_manager
 from src.database import (
     get_db,
     UserModel,
@@ -15,24 +14,23 @@ from src.database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from src.exceptions import BaseSecurityError
-from src.schemas import (
-    UserRegistrationResponseSchema,
-    UserRegistrationRequestSchema,
-    UserActivationRequestSchema
-)
+
 from src.schemas.accounts import (
     UserLoginResponseSchema,
     UserLoginRequestSchema,
     TokenRefreshResponseSchema,
     TokenRefreshRequestSchema,
     PasswordResetRequestSchema,
-    PasswordResetCompleteRequestSchema
+    PasswordResetCompleteRequestSchema,
+    UserRegistrationResponseSchema,
+    UserRegistrationRequestSchema,
+    UserActivationRequestSchema
 )
 from src.security.interfaces import JWTAuthManagerInterface
 
 from src.exceptions.security import TokenExpiredError
 from src.security.utils import generate_secure_token
+
 
 router = APIRouter()
 
