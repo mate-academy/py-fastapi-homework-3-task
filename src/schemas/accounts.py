@@ -11,7 +11,8 @@ from schemas.examples.accounts import (
     user_password_reset_complete_schema_example,
     user_login_response_schema_example,
     token_refresh_response_schema_example,
-    token_refresh_schema_example
+    token_refresh_schema_example,
+    user_login_schema_example
 )
 
 from database.validators.accounts import validate_password_strength, validate_email
@@ -138,7 +139,7 @@ class UserLoginRequestSchema(BaseModel):
         "from_attributes": True,
         "json_schema_extra": {
             "examples": [
-                user_register_schema_example
+                user_login_schema_example
             ]
         }
     }

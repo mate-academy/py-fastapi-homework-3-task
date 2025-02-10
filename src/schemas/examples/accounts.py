@@ -40,3 +40,8 @@ token_refresh_schema_example = {
 token_refresh_response_schema_example = {
     "access_token": "new_access_token"
 }
+
+user_login_schema_example = {
+    "email": "user@example.com",
+    "password": "SecurePassword123!"
+}
