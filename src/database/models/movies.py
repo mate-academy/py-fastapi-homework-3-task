@@ -18,12 +18,11 @@ class MovieStatusEnum(str, Enum):
 MoviesGenresModel = Table(
     "movies_genres",
     Base.metadata,
-    Column(
-        "movie_id",
-        ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True, nullable=False),
-    Column(
-        "genre_id",
-        ForeignKey("genres.id", ondelete="CASCADE"), primary_key=True, nullable=False),
+    Column("movie_id", ForeignKey("movies.id", ondelete="CASCADE"),
+           primary_key=True, nullable=False),
+    Column("genre_id", ForeignKey("genres.id", ondelete="CASCADE"),
+           primary_key=True, nullable=False),
+    extend_existing=True
 )
 
 ActorsMoviesModel = Table(
