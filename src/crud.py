@@ -9,7 +9,6 @@ from database.models.accounts import (
 )
 from schemas.accounts import (
     UserRegistrationResponseSchema,
-    ActivationTokenSchema,
     TokenResetSchema,
 )
 
@@ -27,13 +26,19 @@ def get_user_by_id(db: Session, user_id: int):
 
 
 def create_user(db: Session, user: UserModel):
-    new_user = UserModel(
-        email=user.email, password=user.password, group_id=user.group_id
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return UserRegistrationResponseSchema.model_validate(new_user)
+    try:
+        new_user = UserModel(
+            email=user.email, password=user.password, group_id=user.group_id
+        )
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return UserRegistrationResponseSchema.model_validate(new_user)
+    except IntegrityError as err:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=str(err)
+        )
 
 
 def create_activation_token(db: Session, user: UserModel):

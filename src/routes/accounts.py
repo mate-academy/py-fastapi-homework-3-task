@@ -177,7 +177,7 @@ def password_reset_completion(
         db.commit()
         db.refresh(db_user)
         return MessageResponseSchema(message="Password reset successfully.")
-    except Exception:
+    except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
             status_code=500, detail="An error occurred while resetting the password."
@@ -245,7 +245,7 @@ def login(
             refresh_token=db_refresh_token.token,
             token_type="bearer"
         )
-    except Exception as e:
+    except SQLAlchemyError:
         db.rollback()
         raise HTTPException(
             status_code=500, detail="An error occurred while processing the request."

@@ -3,15 +3,11 @@ from pydantic import BaseModel, EmailStr, field_validator, ConfigDict, Field
 from database import accounts_validators
 
 
-# Write your code here
-
-
 class UserBase(BaseModel):
     email: EmailStr
 
 
 class UserRegistrationRequestSchema(UserBase):
-    email: EmailStr
     password: str
     group_id: int = 1
 
