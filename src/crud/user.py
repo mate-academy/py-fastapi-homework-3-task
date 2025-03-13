@@ -152,13 +152,13 @@ class UserDB(Base):
                 )
                 await db.execute(stmt_delete)
                 await db.commit()
-            except SQLAlchemyError as sae:
+            except SQLAlchemyError:
                 await db.rollback()
                 raise HTTPException(
                     status_code=500,
                     detail="An error occurred while resetting the password.",
                 )
-            except Exception as e:
+            except Exception:
                 await db.rollback()
                 raise HTTPException(
                     status_code=500, detail="An internal error occurred."
@@ -170,13 +170,13 @@ class UserDB(Base):
                 )
                 await db.execute(stmt_delete)
                 await db.commit()
-            except SQLAlchemyError as sae:
+            except SQLAlchemyError:
                 await db.rollback()
                 raise HTTPException(
                     status_code=500,
                     detail="An error occurred while resetting the password.",
                 )
-            except Exception as e:
+            except Exception:
                 await db.rollback()
                 raise HTTPException(
                     status_code=500, detail="An internal error occurred."
