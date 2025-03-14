@@ -16,9 +16,18 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import BaseSecurityError
-from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema, UserActivationRequestSchema, \
-    MessageResponseSchema, PasswordResetRequestSchema, PasswordResetCompleteRequestSchema, UserLoginRequestSchema, \
-    UserLoginResponseSchema, TokenRefreshResponseSchema, TokenRefreshRequestSchema
+from schemas import (
+    UserRegistrationResponseSchema,
+    UserRegistrationRequestSchema,
+    UserActivationRequestSchema,
+    MessageResponseSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema,
+    UserLoginRequestSchema,
+    UserLoginResponseSchema,
+    TokenRefreshResponseSchema,
+    TokenRefreshRequestSchema
+)
 from security.interfaces import JWTAuthManagerInterface
 
 
