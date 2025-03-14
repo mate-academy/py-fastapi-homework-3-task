@@ -219,7 +219,7 @@ async def login(
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         settings: BaseAppSettings = Depends(get_settings),
 ):
-    db_user = db_user = await db.execute(select(UserModel).where(UserModel.email == data.email))
+    db_user = await db.execute(select(UserModel).where(UserModel.email == data.email))
     db_user = db_user.scalar_one_or_none()
     if not db_user or not db_user.verify_password(data.password):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
