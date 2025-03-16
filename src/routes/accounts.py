@@ -35,6 +35,7 @@ from security.utils import generate_secure_token
 
 router = APIRouter()
 
+
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -391,4 +392,3 @@ async def refresh_user(
     )
 
     return TokenRefreshResponseSchema(access_token=access_token)
-
