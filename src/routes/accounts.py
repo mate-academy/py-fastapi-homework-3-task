@@ -73,7 +73,7 @@ async def register_user(
             group_id=user_group.id
         )
         db.add(new_user)
-        await db.refresh(new_user)
+        await db.flush()
 
         activation_token = ActivationTokenModel(
             user_id=new_user.id,
@@ -271,7 +271,7 @@ async def password_reset_complete(
                 detail="Invalid email or token."
             )
 
-        user.set_password(request_data.password)
+        user.password = request_data.password
         await db.execute(
             delete(PasswordResetTokenModel).where(
                 PasswordResetTokenModel.id == reset_token.id
@@ -328,7 +328,7 @@ async def login_user(
             data={"user_id": user.id}
         )
 
-        refresh_token_record = await RefreshTokenModel.create(
+        refresh_token_record = RefreshTokenModel.create(
             user_id=user.id,
             token=refresh_token,
             days_valid=settings.LOGIN_TIME_DAYS,
