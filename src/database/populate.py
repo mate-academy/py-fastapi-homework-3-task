@@ -161,6 +161,7 @@ class CSVDatabaseSeeder:
             print(f"Unexpected error: {e}")
             raise
 
+
 def main():
     settings = get_settings()
     with get_db_contextmanager() as db_session:
