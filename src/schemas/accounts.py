@@ -144,6 +144,7 @@ class TokenRefreshRequestSchema(BaseModel):
 
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
+
     model_config = {
         "json_schema_extra": {
             "example": {
