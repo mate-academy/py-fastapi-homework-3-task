@@ -5,8 +5,10 @@ import uuid
 import re
 
 from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (

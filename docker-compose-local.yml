@@ -1,0 +1,43 @@
+services:
+  db:
+    image: 'postgres:latest'
+    container_name: postgres_theater
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_theater_data:/var/lib/postgresql/data/
+    networks:
+      - theater_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB -h 127.0.0.1 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  migrator:
+    build: .
+    container_name: alembic_migrator_theater
+    command: ["/bin/bash", "/commands/run_migration.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./src:/usr/src/fastapi
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/usr/src/fastapi
+    networks:
+      - theater_network
+
+volumes:
+  postgres_theater_data:
+    driver: local
+
+networks:
+  theater_network:
+    driver: bridge

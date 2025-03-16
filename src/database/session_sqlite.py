@@ -1,37 +1,61 @@
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from config import get_settings
 from database import Base
 
 settings = get_settings()
 
-SQLITE_DATABASE_URL = f"sqlite:///{settings.PATH_TO_DB}"
-sqlite_engine = create_engine(SQLITE_DATABASE_URL, connect_args={"check_same_thread": False})
-sqlite_connection = sqlite_engine.connect()
-SqliteSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sqlite_connection)
+SQLITE_DATABASE_URL = f"sqlite+aiosqlite:///{settings.PATH_TO_DB}"
+sqlite_engine = create_async_engine(SQLITE_DATABASE_URL, echo=False)
+AsyncSQLiteSessionLocal = sessionmaker(  # type: ignore
+    bind=sqlite_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
-def get_sqlite_db() -> Session:
-    db = SqliteSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide an asynchronous database session.
+
+    This function returns an async generator yielding a new database session.
+    It ensures that the session is properly closed after use.
+
+    :return: An asynchronous generator yielding an AsyncSession instance.
+    """
+    async with AsyncSQLiteSessionLocal() as session:
+        yield session
 
 
-@contextmanager
-def get_sqlite_db_contextmanager() -> Session:
-    db = SqliteSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@asynccontextmanager
+async def get_sqlite_db_contextmanager() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provide an asynchronous database session using a context manager.
+
+    This function allows for managing the database session within a `with` statement.
+    It ensures that the session is properly initialized and closed after execution.
+
+    :return: An asynchronous generator yielding an AsyncSession instance.
+    """
+    async with AsyncSQLiteSessionLocal() as session:
+        yield session
 
 
-def reset_sqlite_database():
-    with sqlite_connection.begin():
-        Base.metadata.drop_all(bind=sqlite_connection)
-        Base.metadata.create_all(bind=sqlite_connection)
+async def reset_sqlite_database() -> None:
+    """
+    Reset the SQLite database.
+
+    This function drops all existing tables and recreates them.
+    It is useful for testing purposes or when resetting the database is required.
+
+    Warning: This action is irreversible and will delete all stored data.
+
+    :return: None
+    """
+    async with sqlite_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
