@@ -87,6 +87,12 @@ async def activate(
     user_result = await db.execute(user_query)
     user = user_result.scalar_one_or_none()
 
+    if user:
+        raise HTTPException(
+            status_code=409,
+            detail=f"A user with this email {data.email} already exists."
+        )
+
     if user.is_active:
         raise HTTPException(
             status_code=400,
