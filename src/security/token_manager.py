@@ -15,7 +15,10 @@ class JWTAuthManager(JWTAuthManagerInterface):
     _ACCESS_KEY_TIMEDELTA_MINUTES = 10
     _REFRESH_KEY_TIMEDELTA_MINUTES = 60 * 24 * 7
 
-    def __init__(self, secret_key_access: str, secret_key_refresh: str, algorithm: str):
+    def __init__(self,
+                 secret_key_access: str,
+                 secret_key_refresh: str,
+                 algorithm: str) -> None:
         """
         Initialize the manager with secret keys and algorithm for token operations.
         """
