@@ -56,7 +56,7 @@ async def register(
             email=user_data.email,
             raw_password=user_data.password,
             group_id=UserGroupEnum.USER.value
-        )
+        )   # HI BUDDY
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
