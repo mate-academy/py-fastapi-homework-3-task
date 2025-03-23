@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from datetime import datetime, timezone, timedelta
 import uuid
 
@@ -6,6 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
+=======
+import time
+from datetime import datetime, timezone, timedelta
+from typing import cast
+import uuid
+import re
+
+from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy import select, delete
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session, joinedload
+>>>>>>> 55a94b6a8140ffcf615757bc75d38316d78c9424
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -17,6 +31,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
+<<<<<<< HEAD
 from exceptions import TokenExpiredError
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password
@@ -35,11 +50,39 @@ from schemas.accounts import (
 )
 from security.utils import generate_secure_token
 
+=======
+from exceptions import BaseSecurityError, TokenExpiredError
+from security.interfaces import JWTAuthManagerInterface
+from database.validators.accounts import validate_email, validate_password_strength
+from security.passwords import hash_password
+from security.token_manager import JWTAuthManager
+
+from schemas.accounts import UserRegistrationRequestSchema, UserRegistrationResponseSchema
+
+from schemas.accounts import MessageResponseSchema
+
+from schemas.accounts import UserActivationRequestSchema
+
+from database.models.accounts import TokenBaseModel
+
+from security.utils import generate_secure_token
+
+from schemas.accounts import PasswordResetRequestSchema
+
+from schemas.accounts import PasswordResetCompleteRequestSchema
+
+from schemas.accounts import UserLoginResponseSchema
+
+from schemas.accounts import UserLoginRequestSchema
+
+from schemas.accounts import TokenRefreshResponseSchema, TokenRefreshRequestSchema
+>>>>>>> 55a94b6a8140ffcf615757bc75d38316d78c9424
 
 router = APIRouter()
 SECRET_KEY = str(uuid.uuid4())
 
 
+<<<<<<< HEAD
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -85,6 +128,77 @@ async def register(
         )
     except Exception as e:
         print(e)
+=======
+# @router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=201)
+# def create_user(user: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
+#     group_user = db.query(UserGroupModel).filter(UserGroupModel.name == UserGroupEnum.USER).first()
+#     existing_email = db.query(UserModel).filter(UserModel.email == str(user.email)).first()
+#     email_validated = validate_email(user.email)
+#     password_validate = hash_password(validate_password_strength(user.password))
+#     if existing_email:
+#         raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
+#     try:
+#         new_user = UserModel(email=email_validated, _hashed_password=password_validate, group_id=group_user.id)
+#         db.add(new_user)
+#         db.commit()
+#         db.refresh(new_user)
+#
+#         jwt = JWTAuthManager(
+#             secret_key_access=str(uuid.uuid4()),
+#             secret_key_refresh=str(uuid.uuid4()),
+#             algorithm="HS256"
+#         )
+#         activation_token = jwt._create_token(
+#             data={"exp": new_user},
+#             secret_key=SECRET_KEY,
+#             expires_delta=timedelta(days=10)
+#         )
+#         return {"id": new_user.id, "email": new_user.email, "activation_token": activation_token}
+#     except Exception:
+#         db.rollback()
+#         raise HTTPException(status_code=500, detail="An error occurred during user creation.")
+#     finally:
+#         db.close()
+
+@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=201)
+def create_user(user: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
+    group_user = db.query(UserGroupModel).filter(UserGroupModel.name == UserGroupEnum.USER).first()
+    existing_email = db.query(UserModel).filter(UserModel.email == str(user.email)).first()
+    email_validated = validate_email(user.email)
+    if existing_email:
+        raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
+
+    try:
+        password_validate = hash_password(user.password)
+        new_user = UserModel(
+            email=email_validated,
+            _hashed_password=password_validate,
+            group_id=group_user.id,
+        )
+        db.add(new_user)
+        db.commit()
+
+        create_token = ActivationTokenModel(
+            user_id=new_user.id,
+            token=generate_secure_token(),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=2)
+        )
+        db.add(create_token)
+        db.commit()
+
+        new_user.activation_token = create_token
+
+        db.commit()
+        db.refresh(new_user)
+        print(create_token)
+        return {"id": new_user.id, "email": new_user.email, "activation_token": new_user.activation_token.token}
+    except Exception as e:
+        db.rollback()
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail="An error occurred during user creation.")
+    finally:
+        db.close()
+>>>>>>> 55a94b6a8140ffcf615757bc75d38316d78c9424
 
 
 @router.post("/activate/", response_model=MessageResponseSchema, status_code=200)

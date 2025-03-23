@@ -211,7 +211,7 @@ class RefreshTokenModel(TokenBaseModel):
     )
 
     @classmethod
-    def create(cls, user_id: int, days_valid: int, token: str) -> "RefreshTokenModel":
+    def create(cls, user_id: int | Mapped[int], days_valid: int, token: str) -> "RefreshTokenModel":
         """
         Factory method to create a new RefreshTokenModel instance.
 

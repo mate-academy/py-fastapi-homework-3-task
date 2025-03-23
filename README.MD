@@ -1,5 +1,48 @@
 # Movie Theater API Project
 
+## Table of Contents
+
+- [Project Overview](#project-structure-overview)
+- [Project Structure Overview](#project-structure-overview)
+  - [Root Directory](#root-directory)
+  - [Commands](#commands)
+  - [Source Directory](#source-directory-src)
+  - [Tip: Using `get_db` for Dependency Injection in FastAPI](#tip-using-get_db-for-dependency-injection-in-fastapi)
+- [Services Overview](#services-overview)
+  - [Database Service](#1-database-service-db)
+  - [pgAdmin Service](#2-pgadmin-service-pgadmin)
+  - [Backend Service](#3-backend-service-web)
+  - [Database Migrator Service](#4-database-migrator-service-migrator)
+- [Volumes](#volumes)
+- [Networks](#networks)
+- [How to Run the Project](#how-to-run-the-project)
+- [Run project with PyCharm](#run-project-with-pycharm)
+- [Models and Entities Overview](#models-and-entities-overview)
+  - [Accounts Models](#accounts-models)
+    - [UserGroupModel](#1-usergroupmodel)
+    - [UserModel](#2-usermodel)
+    - [UserProfileModel](#3-userprofilemodel)
+    - [TokenBaseModel](#4-tokenbasemodel)
+    - [ActivationTokenModel](#5-activationtokenmodel)
+    - [PasswordResetTokenModel](#6-passwordresettokenmodel)
+    - [RefreshTokenModel](#7-refreshtokenmodel)
+  - [Movie Models](#movie-models)
+    - [MovieModel](#1-moviemodel)
+    - [GenreModel](#2-genremodel)
+    - [ActorModel](#3-actormodel)
+    - [CountryModel](#4-countrymodel)
+    - [LanguageModel](#5-languagemodel)
+    - [Association Tables](#6-association-tables)
+- [Task Description: Extending the Cinema Application](#task-description-extending-the-cinema-application)
+  - [Implement User Registration Endpoint](#task-implement-user-registration-endpoint)
+  - [Implement User Account Activation Endpoint](#task-implement-user-account-activation-endpoint)
+  - [Implement Password Reset Token Request Endpoint](#task-implement-password-reset-token-request-endpoint)
+  - [Implement Password Reset Completion Endpoint](#task-implement-password-reset-completion-endpoint)
+  - [Implement User Login Endpoint](#task-implement-user-login-endpoint)
+  - [Implement Access Token Refresh Endpoint](#task-implement-access-token-refresh-endpoint)
+- [Tips and Guidance](#tips-and-guidance)
+
+
 Welcome to the **Movie Theater API** project! This educational assignment is designed to help you develop and refine
 your skills in creating robust web applications using FastAPI, SQLAlchemy, and Docker. Here's what the project offers:
 
@@ -146,15 +189,15 @@ The `get_db` function is a generator that provides a SQLAlchemy session for inte
 
 ```python
 from fastapi import Depends, APIRouter
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_db  # Import the get_db generator
 
 router = APIRouter()
 
 
 @router.get("/example")
-def example_route(db: Session = Depends(get_db)):
-    # Use the db session here to interact with the database
+async def example_route(db: AsyncSession = Depends(get_db)):
+    """Use the db session here to interact with the database"""
     pass
 ```
 
@@ -377,6 +420,26 @@ After all services are running, you can test the API by accessing the OpenAPI do
 http://localhost:8000/docs
 ```
 
+### Run project with PyCharm
+
+1. Mark the `src` directory as root
+    ![mark src directory as root](./assets/images/1_mark_directory_as_source_root.png)
+2. Close all open code tabs
+3. Restart `PyCharm`
+4. Create a new Run Configuration for the `FastAPI` project
+    ![create new fastapi run configuration](./assets/images/2_create_new_run_config.png)
+5. Add the required environment variables to the Run Configuration.
+6. Start the local Docker Compose services:
+    ```bash
+    docker-compose -f docker-compose-local.yml up --build -d
+    ```
+7. Wait for the initial database seeding to finish (this may take a moment the first time).
+    ![seed db](./assets/images/4_seed_db.png)  
+8. Run the project via `PyCharm` and use breakpoints for debugging
+9. If you need to apply database migrations manually, run:
+    ```bash
+    docker-compose -f docker-compose-local.yml up --build migrator
+    ```
 
 ### Models and Entities Overview
 
