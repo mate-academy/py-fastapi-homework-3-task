@@ -29,9 +29,10 @@ from schemas.accounts import (
     PasswordResetCompleteRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    TokenRefreshResponseSchema, UserLoginRequestSchema
 )
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 
 router = APIRouter()
 
@@ -229,7 +230,7 @@ async def password_reset_complete(
     status_code=status.HTTP_201_CREATED
 )
 async def login(
-        data: UserRegistrationRequestSchema,
+        data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
         settings: BaseAppSettings = Depends(get_settings),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
