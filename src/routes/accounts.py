@@ -71,6 +71,7 @@ async def register(user: UserRegistrationRequestSchema, db: AsyncSession = Depen
         await db.commit()
         await db.refresh(new_user)
     except SQLAlchemyError:
+        await db.rollback()
         raise HTTPException(
             detail="An error occurred during user creation.",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -180,6 +181,13 @@ async def password_reset_complete(input_data: PasswordResetCompleteRequestSchema
         )
 
     try:
+        try:
+            validate_password_strength(input_data.password)
+        except ValueError as e:
+            raise HTTPException(
+                detail=str(e),
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
         user._hashed_password = hash_password(input_data.password)
         await db.delete(token)
         await db.commit()
@@ -195,7 +203,7 @@ async def password_reset_complete(input_data: PasswordResetCompleteRequestSchema
     }
 
 
-@router.post("/login/", status_code=status.HTTP_201_CREATED)
+@router.post("/login/", status_code=status.HTTP_200_OK)
 async def login(
         input_data: UserLoginRequestSchema,
         settings_manager: BaseAppSettings = Depends(get_settings),
