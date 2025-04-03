@@ -1,59 +1,40 @@
 from pydantic import BaseModel, EmailStr, field_validator
 
-from database.validators.accounts import (
-    validate_email,
-    validate_password_strength
-)
+from database import accounts_validators
 
 
-class UserBase(BaseModel):
+class BaseEmailPasswordSchema(BaseModel):
     email: EmailStr
+    password: str
+    model_config = {
+        "from_atributes": True
+    }
 
     @field_validator("email")
-    def email_validator(cls, value):
-        return validate_email(value)
-
-
-class UserRegistrationRequestSchema(UserBase):
-    password: str
-    group_id: int = 1
+    @classmethod
+    def validate_email(cls, value):
+        return value.lower()
 
     @field_validator("password")
-    def password_validator(cls, value):
-        return validate_password_strength(value)
+    @classmethod
+    def validate_password(cls, value):
+        return accounts_validators.validate_password_strength(value)
 
 
-class UserRegistrationResponseSchema(UserBase):
+class UserRegistrationRequestSchema(BaseEmailPasswordSchema):
+    pass
+
+
+class UserRegistrationResponseSchema(BaseModel):
     id: int
-
-    model_config = {"from_attributes": True}
-
-
-class UserActivationRequestSchema(BaseModel):
     email: EmailStr
-    token: str
+    model_config = {
+        "from_atributes": True
+    }
 
 
-class MessageResponseSchema(BaseModel):
-    message: str
-
-
-class PasswordResetRequestSchema(BaseModel):
-    email: EmailStr
-
-    @field_validator("email")
-    def email_validator(cls, value):
-        return validate_email(value)
-
-
-class PasswordResetCompleteRequestSchema(BaseModel):
-    email: EmailStr
-    token: str
-    password: str
-
-    @field_validator("password")
-    def password_validator(cls, value):
-        return validate_password_strength(value)
+class UserLoginRequestSchema(BaseEmailPasswordSchema):
+    pass
 
 
 class UserLoginResponseSchema(BaseModel):
@@ -62,9 +43,21 @@ class UserLoginResponseSchema(BaseModel):
     token_type: str = "bearer"
 
 
-class UserLoginRequestSchema(BaseModel):
+class UserActivationRequestSchema(BaseModel):
     email: EmailStr
-    password: str
+    token: str
+
+
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetCompleteRequestSchema(BaseModel):
+    token: str
+
+
+class MessageResponseSchema(BaseModel):
+    message: str
 
 
 class TokenRefreshRequestSchema(BaseModel):
@@ -73,3 +66,4 @@ class TokenRefreshRequestSchema(BaseModel):
 
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
+    token_type: str = "bearer"
