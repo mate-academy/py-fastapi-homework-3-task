@@ -6,8 +6,9 @@ from database import accounts_validators
 class BaseEmailPasswordSchema(BaseModel):
     email: EmailStr
     password: str
+
     model_config = {
-        "from_atributes": True
+        "from_attributes": True
     }
 
     @field_validator("email")
@@ -28,9 +29,27 @@ class UserRegistrationRequestSchema(BaseEmailPasswordSchema):
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
+
     model_config = {
-        "from_atributes": True
+        "from_attributes": True
     }
+
+
+class UserActivationRequestSchema(BaseModel):
+    email: EmailStr
+    token: str
+
+
+class MessageResponseSchema(BaseModel):
+    message: str
+
+
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetCompleteRequestSchema(BaseEmailPasswordSchema):
+    token: str
 
 
 class UserLoginRequestSchema(BaseEmailPasswordSchema):
@@ -41,23 +60,6 @@ class UserLoginResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-
-
-class UserActivationRequestSchema(BaseModel):
-    email: EmailStr
-    token: str
-
-
-class PasswordResetRequestSchema(BaseModel):
-    email: EmailStr
-
-
-class PasswordResetCompleteRequestSchema(BaseModel):
-    token: str
-
-
-class MessageResponseSchema(BaseModel):
-    message: str
 
 
 class TokenRefreshRequestSchema(BaseModel):
