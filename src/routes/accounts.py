@@ -147,7 +147,7 @@ async def reset_password_request(
             await db.delete(item)
             await db.flush()
 
-        new_refresh_password_token = PasswordResetTokenModel(user=this_user)
+        new_refresh_password_token = PasswordResetTokenModel.create(user=this_user)
         db.add(new_refresh_password_token)
         await db.commit()
         await db.refresh(this_user)
@@ -209,7 +209,7 @@ async def reset_password(
         await db.delete(this_token)
 
         await db.commit()
-        await db.refresh(this_user, ["_hashed_password"])
+        await db.refresh(this_user)
 
         return MessageResponseSchema(message="Password reset successfully.")
 
