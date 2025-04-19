@@ -52,12 +52,15 @@ async def user_register(user_data: UserRegistrationRequestSchema, db: AsyncSessi
             )
             db.add(group_user)
             await db.flush()
+        try:
+            user_db = UserModel.create(
+                email=user_data.email,
+                raw_password=user_data.password,
+                group_id=group_user.id
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
 
-        user_db = UserModel.create(
-            email=user_data.email,
-            raw_password=user_data.password,
-            group_id=group_user.id
-        )
         try:
             db.add(user_db)
 
