@@ -147,13 +147,6 @@ async def reset_password_request(user_data: PasswordResetRequestSchema, db: Asyn
              responses={
                  200: {"message": "Password reset successfully."},
                  400: {"detail": "Invalid email or token."},
-                 500: {"detail": "An error occurred while resetting the password."}}
-             )
-@router.post("/reset-password/complete/",
-             status_code=status.HTTP_200_OK,
-             responses={
-                 200: {"message": "Password reset successfully."},
-                 400: {"detail": "Invalid email or token."},
                  500: {"detail": "An error occurred while resetting the password."}
              })
 async def reset_password_complete(

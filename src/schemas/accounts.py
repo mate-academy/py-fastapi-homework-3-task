@@ -1,9 +1,6 @@
 import enum
-from email.policy import default
 
-from pydantic import BaseModel, EmailStr, field_validator, Field, ConfigDict
-
-from database import accounts_validators
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -41,8 +38,8 @@ class MessageResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PasswordResetRequestSchema(UserBase):
-    ...
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
 
 
 class PasswordResetCompleteRequestSchema(UserBase):
