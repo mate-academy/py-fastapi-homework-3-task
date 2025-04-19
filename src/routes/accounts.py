@@ -53,12 +53,12 @@ async def user_register(user_data: UserRegistrationRequestSchema, db: AsyncSessi
             db.add(group_user)
             await db.flush()
 
-        user_db = UserModel(
+        user_db = UserModel.create(
             email=user_data.email,
+            raw_password=user_data.password,
             group_id=group_user.id
         )
         try:
-            user_db.password = user_data.password
             db.add(user_db)
 
             user_activate_token = ActivationTokenModel(user=user_db)
