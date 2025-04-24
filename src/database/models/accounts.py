@@ -12,7 +12,7 @@ from sqlalchemy import (
     func,
     Text,
     Date,
-    UniqueConstraint
+    UniqueConstraint, cast
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -20,6 +20,7 @@ from sqlalchemy.orm import (
     relationship,
     validates
 )
+from sqlalchemy.sql.functions import user
 
 from database import Base
 from database.validators import accounts as validators
@@ -219,8 +220,11 @@ class RefreshTokenModel(TokenBaseModel):
         the expiration date based on the provided number of valid days and setting
         the required attributes.
         """
-        expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
+        expires_at = cast(datetime, TokenBaseModel.expires_at).replace(tzinfo=timezone.utc)
+
         return cls(user_id=user_id, expires_at=expires_at, token=token)
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
+
+

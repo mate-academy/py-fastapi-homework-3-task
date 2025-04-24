@@ -1,9 +1,12 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from crud import get_user_by_email, create_user
 from database import get_db, MovieModel
 from database import (
     CountryModel,
@@ -11,12 +14,17 @@ from database import (
     ActorModel,
     LanguageModel
 )
+
+
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieDetailSchema
 )
+from schemas.accounts import UserCreate, UserRead, Token
 from schemas.movies import MovieCreateSchema, MovieUpdateSchema
+from security.passwords import verify_password
+from security.token_manager import JWTAuthManager
 
 router = APIRouter()
 
@@ -429,3 +437,4 @@ async def update_movie(
         raise HTTPException(status_code=400, detail="Invalid input data.")
 
     return {"detail": "Movie updated successfully."}
+

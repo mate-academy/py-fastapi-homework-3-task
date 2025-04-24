@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional, List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, EmailStr
 
 from database.models.movies import MovieStatusEnum
 from schemas.examples.movies import (
@@ -197,3 +197,4 @@ class MovieUpdateSchema(BaseModel):
             ]
         }
     }
+
