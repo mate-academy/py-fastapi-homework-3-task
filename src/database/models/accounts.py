@@ -131,6 +131,10 @@ class UserModel(Base):
     def validate_email(self, key, value):
         return validators.validate_email(value.lower())
 
+    def set_password(self, raw_password: str) -> None:
+        validators.validate_password_strength(raw_password)
+        self._hashed_password = hash_password(raw_password)
+
 
 class UserProfileModel(Base):
     __tablename__ = "user_profiles"
