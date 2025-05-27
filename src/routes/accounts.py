@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from typing import cast
@@ -157,7 +157,7 @@ def login_user(
 @router.post("/api/v1/accounts/refresh/")
 def refresh_token(
     data: TokenRefreshSchema,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_postgresql_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     try:
