@@ -157,7 +157,7 @@ def login_user(
 @router.post("/api/v1/accounts/refresh/")
 def refresh_token(
     data: TokenRefreshSchema,
-    db: Session = Depends(get_postgresql_db),
+    db: Session = Depends(get_postgresql_db),  # Fixed here
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     try:
@@ -182,3 +182,4 @@ def refresh_token(
         raise
     except Exception:
         raise HTTPException(status_code=400, detail="Token has expired.")
+
