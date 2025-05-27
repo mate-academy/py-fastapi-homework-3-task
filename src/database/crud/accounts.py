@@ -40,8 +40,8 @@ async def create_user(user: UserRegistrationRequestSchema, db: AsyncSession) -> 
         user=db_user,
     )
 
-    db.add(activation_token)
     db.add(db_user)
+    db.add(activation_token)
     await db.commit()
     await db.refresh(db_user)
     return db_user

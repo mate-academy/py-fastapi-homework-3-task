@@ -25,7 +25,7 @@ from schemas.accounts import UserRegistrationResponseSchema, UserRegistrationReq
     UserActivationRequestSchema, PasswordResetRequestSchema, PasswordResetCompleteRequestSchema, \
     UserLoginResponseSchema, UserLoginRequestSchema, TokenRefreshResponseSchema, TokenRefreshRequestSchema
 from security.interfaces import JWTAuthManagerInterface
-from security.passwords import verify_password
+from security.passwords import verify_password, hash_password
 from security.token_manager import JWTAuthManager
 
 router = APIRouter()
@@ -131,7 +131,7 @@ async def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
-        user.password = reset_data.password
+        user.password = hash_password(reset_data.password)
         await db.delete(token)
         await db.flush()
         await db.commit()
