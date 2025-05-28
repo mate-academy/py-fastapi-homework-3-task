@@ -131,7 +131,8 @@ async def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
-        user.password = reset_data.password
+        hashed_new_password = hash_password(reset_data.password)
+        user._hashed_password = hashed_new_password
         await db.delete(token)
         await db.flush()
         await db.commit()
