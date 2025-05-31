@@ -31,6 +31,7 @@ from schemas.accounts import (
     TokenRefreshResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 
 
 async def create_user(user: UserRegistrationRequestSchema, db: AsyncSession) -> UserRegistrationResponseSchema:
@@ -47,7 +48,8 @@ async def create_user(user: UserRegistrationRequestSchema, db: AsyncSession) -> 
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Default user group not found.")
 
     try:
-        new_user = UserModel.create(email=str(user.email), raw_password=user.password, group_id=group.id)
+        hashed_password = hash_password(user.password)
+        new_user = UserModel.create(email=str(user.email), raw_password=hashed_password, group_id=group.id)
         db.add(new_user)
         await db.flush()
 
@@ -108,7 +110,10 @@ async def reset_password(db: AsyncSession, user_data: PasswordResetRequestSchema
     return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
 
 
-async def complete_reset_password(db: AsyncSession, user_data: PasswordResetCompleteRequestSchema) -> MessageResponseSchema:
+async def complete_reset_password(
+        db: AsyncSession,
+        user_data: PasswordResetCompleteRequestSchema
+) -> MessageResponseSchema:
     result = await db.execute(select(UserModel).filter_by(email=user_data.email))
     user = result.scalars().first()
     if not user or not user.is_active:
