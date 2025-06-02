@@ -51,6 +51,16 @@ router = APIRouter()
 async def register(
     user: UserRegistrationRequestSchema, db: AsyncSession = Depends(get_db)
 ) -> UserRegistrationResponseSchema:
+    try:
+        validate_email(user.email)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    try:
+        validate_password_strength(user.password)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     existing = await db.scalar(
         select(UserModel).where((UserModel.email == user.email))
     )
@@ -108,7 +118,8 @@ async def activate_user(
         .where(UserModel.email == data.email)
         .options(selectinload(UserModel.activation_token))
     )
-    user = (await db.execute(user_stmt)).scalar_one_or_none()
+    result = await db.execute(user_stmt)
+    user = result.scalar_one_or_none()
 
     if not user or not user.activation_token:
         raise HTTPException(
