@@ -20,9 +20,9 @@ from database import Base
 
 
 class MovieStatusEnum(str, Enum):
-    RELEASED = "Released"
-    POST_PRODUCTION = "Post Production"
-    IN_PRODUCTION = "In Production"
+    RELEASED = "RELEASED"
+    POST_PRODUCTION = "POST_PRODUCTION"
+    IN_PRODUCTION = "IN_PRODUCTION"
 
 
 MoviesGenresModel = Table(
@@ -62,9 +62,15 @@ ActorsMoviesModel = Table(
 MoviesLanguagesModel = Table(
     "movies_languages",
     Base.metadata,
-    Column("movie_id", ForeignKey("movies.id", ondelete="CASCADE"), primary_key=True),
     Column(
-        "language_id", ForeignKey("languages.id", ondelete="CASCADE"), primary_key=True
+        "movie_id",
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "language_id",
+        ForeignKey("languages.id", ondelete="CASCADE"),
+        primary_key=True,
     ),
 )
 
@@ -119,7 +125,9 @@ class LanguageModel(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
 
     movies: Mapped[list["MovieModel"]] = relationship(
-        "MovieModel", secondary=MoviesLanguagesModel, back_populates="languages"
+        "MovieModel",
+        secondary=MoviesLanguagesModel,
+        back_populates="languages",
     )
 
     def __repr__(self):
@@ -140,7 +148,9 @@ class MovieModel(Base):
     budget: Mapped[float] = mapped_column(DECIMAL(15, 2), nullable=False)
     revenue: Mapped[float] = mapped_column(Float, nullable=False)
 
-    country_id: Mapped[int] = mapped_column(ForeignKey("countries.id"), nullable=False)
+    country_id: Mapped[int] = mapped_column(
+        ForeignKey("countries.id"), nullable=False
+    )
     country: Mapped["CountryModel"] = relationship(
         "CountryModel", back_populates="movies"
     )
@@ -154,10 +164,14 @@ class MovieModel(Base):
     )
 
     languages: Mapped[list["LanguageModel"]] = relationship(
-        "LanguageModel", secondary=MoviesLanguagesModel, back_populates="movies"
+        "LanguageModel",
+        secondary=MoviesLanguagesModel,
+        back_populates="movies",
     )
 
-    __table_args__ = (UniqueConstraint("name", "date", name="unique_movie_constraint"),)
+    __table_args__ = (
+        UniqueConstraint("name", "date", name="unique_movie_constraint"),
+    )
 
     @classmethod
     def default_order_by(cls):

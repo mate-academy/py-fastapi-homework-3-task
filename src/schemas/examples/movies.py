@@ -21,7 +21,7 @@ movie_create_schema_example = {
     "date": "2025-01-01",
     "score": 85.5,
     "overview": "An amazing movie.",
-    "status": "Released",
+    "status": "RELEASED",
     "budget": 1000000.00,
     "revenue": 5000000.00,
     "country": "US",
@@ -35,13 +35,13 @@ language_schema_example = {"id": 1, "name": "English"}
 
 country_schema_example = {"id": 1, "code": "US", "name": "United States"}
 
-genre_schema_example = {"id": 1, "genre": "Comedy"}
+genre_schema_example = {"id": 1, "name": "Comedy"}
 
 actor_schema_example = {"id": 1, "name": "JimmyFallon"}
 
 movie_detail_schema_example = {
     **movie_item_schema_example,
-    "status": "Released",
+    "status": "RELEASED",
     "budget": 1000000.00,
     "revenue": 5000000.00,
     "actors": [actor_schema_example],
@@ -55,7 +55,7 @@ movie_update_schema_example = {
     "date": "2025-01-01",
     "score": 85.5,
     "overview": "An amazing movie.",
-    "status": "Released",
+    "status": "RELEASED",
     "budget": 1000000.00,
     "revenue": 5000000.00,
 }

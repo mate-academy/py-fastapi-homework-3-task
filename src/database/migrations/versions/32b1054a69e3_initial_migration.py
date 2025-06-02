@@ -71,7 +71,10 @@ def upgrade() -> None:
         sa.Column(
             "status",
             sa.Enum(
-                "RELEASED", "POST_PRODUCTION", "IN_PRODUCTION", name="moviestatusenum"
+                "RELEASED",
+                "POST_PRODUCTION",
+                "IN_PRODUCTION",
+                name="moviestatusenum",
             ),
             nullable=False,
         ),
@@ -104,14 +107,16 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("group_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["group_id"], ["user_groups.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["group_id"], ["user_groups.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
     op.create_table(
         "activation_tokens",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("token", sa.String(length=255), nullable=False),
+        sa.Column("token", sa.VARCHAR(length=64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
@@ -123,30 +128,42 @@ def upgrade() -> None:
         "actors_movies",
         sa.Column("movie_id", sa.Integer(), nullable=False),
         sa.Column("actor_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["actor_id"], ["actors.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["movie_id"], ["movies.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["actor_id"], ["actors.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["movie_id"], ["movies.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("movie_id", "actor_id"),
     )
     op.create_table(
         "movies_genres",
         sa.Column("movie_id", sa.Integer(), nullable=False),
         sa.Column("genre_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["genre_id"], ["genres.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["movie_id"], ["movies.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["genre_id"], ["genres.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["movie_id"], ["movies.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("movie_id", "genre_id"),
     )
     op.create_table(
         "movies_languages",
         sa.Column("movie_id", sa.Integer(), nullable=False),
         sa.Column("language_id", sa.Integer(), nullable=False),
-        sa.ForeignKeyConstraint(["language_id"], ["languages.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["movie_id"], ["movies.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["language_id"], ["languages.id"], ondelete="CASCADE"
+        ),
+        sa.ForeignKeyConstraint(
+            ["movie_id"], ["movies.id"], ondelete="CASCADE"
+        ),
         sa.PrimaryKeyConstraint("movie_id", "language_id"),
     )
     op.create_table(
         "password_reset_tokens",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("token", sa.String(length=255), nullable=False),
+        sa.Column("token", sa.VARCHAR(length=64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
@@ -157,7 +174,7 @@ def upgrade() -> None:
     op.create_table(
         "refresh_tokens",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("token", sa.String(length=255), nullable=False),
+        sa.Column("token", sa.VARCHAR(length=64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
@@ -167,16 +184,17 @@ def upgrade() -> None:
     op.create_table(
         "user_profiles",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("first_name", sa.String(length=100), nullable=True),
-        sa.Column("last_name", sa.String(length=100), nullable=True),
-        sa.Column("avatar", sa.String(length=255), nullable=True),
-        sa.Column("gender", sa.Enum("MAN", "WOMAN", name="genderenum"), nullable=True),
+        sa.Column("first_name", sa.VARCHAR(length=100), nullable=True),
+        sa.Column("last_name", sa.VARCHAR(length=100), nullable=True),
+        sa.Column("avatar", sa.VARCHAR(length=255), nullable=True),
+        sa.Column(
+            "gender", sa.Enum("MAN", "WOMAN", name="genderenum"), nullable=True
+        ),
         sa.Column("date_of_birth", sa.Date(), nullable=True),
         sa.Column("info", sa.Text(), nullable=True),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("user_id"),
         sa.UniqueConstraint("user_id"),
     )
     # ### end Alembic commands ###
