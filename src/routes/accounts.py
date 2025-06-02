@@ -323,7 +323,7 @@ async def refresh(
         user_id = int(token["user_id"])
     except (TypeError, KeyError):
         raise HTTPException(
-            status_code=status.HTTP_404_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
         )
     user_stmt = select(UserModel).where(UserModel.id == user_id)
