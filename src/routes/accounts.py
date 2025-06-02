@@ -84,7 +84,7 @@ async def register_user(
         )
 
     await db.refresh(new_user)
-    return new_user
+    return UserRegistrationResponseSchema.from_orm(new_user)
 
 
 @router.post(
