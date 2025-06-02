@@ -3,17 +3,14 @@ from schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieCreateSchema,
-    MovieUpdateSchema
+    MovieUpdateSchema,
 )
 from schemas.accounts import (
+    UserBase,
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
-    MessageResponseSchema,
-    PasswordResetRequestSchema,
-    PasswordResetCompleteRequestSchema,
-    UserLoginResponseSchema,
+    UserResetPasswordCompleteRequestSchema,
     UserLoginRequestSchema,
-    TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    RefreshAccessTokenRequest,
 )
