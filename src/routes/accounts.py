@@ -30,6 +30,7 @@ from schemas.accounts import (
     TokenRefreshResponseSchema
 )
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 
 router = APIRouter()
 
@@ -72,9 +73,9 @@ async def register_user(
             detail="An error occurred during user creation."
         )
     try:
-        new_user = UserModel.create(
+        new_user = UserModel(
             email=user_data.email,
-            raw_password=user_data.password,
+            password=hash_password(user_data.password),
             group_id=user_group.id,
         )
         db.add(new_user)
@@ -266,10 +267,10 @@ async def login_user(
         {"user_id": user.id}
     )
     try:
-        token_obj = RefreshTokenModel.create(
+        token_obj = RefreshTokenModel(
             user_id=user.id,
             token=refresh_token,
-            days_valid=settings.LOGIN_TIME_DAYS
+            expires_at=datetime.utcnow() + timedelta(days=settings.LOGIN_TIME_DAYS)
         )
         db.add(token_obj)
         await db.commit()
