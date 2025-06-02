@@ -1,7 +1,6 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
-from asyncpg.pgproto.pgproto import timedelta
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -198,7 +197,7 @@ async def reset_password(user_data: PasswordResetCompleteRequestSchema,
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token")
 
     query_token = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id,
-                                                        PasswordResetTokenModel.token == user.token)
+                                                        PasswordResetTokenModel.token == user_data.token)
     result_token = await db.execute(query_token)
 
     token_obj = result_token.scalars().first()
