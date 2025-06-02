@@ -118,7 +118,10 @@ async def activate_user(
         )
 
     token_obj = user.activation_token
-    if token_obj.token != data.token or token_obj.expires_at < datetime.now(
+    expires_at = token_obj.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if token_obj.token != data.token or expires_at < datetime.now(
         timezone.utc
     ):
         raise HTTPException(
@@ -202,8 +205,10 @@ async def reset_password_complete(
         )
 
     token_obj = user.password_reset_token
-
-    if token_obj.token != data.token or token_obj.expires_at < datetime.now(
+    expires_at = token_obj.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if token_obj.token != data.token or expires_at < datetime.now(
         timezone.utc
     ):
         await db.delete(token_obj)
