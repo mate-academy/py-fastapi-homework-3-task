@@ -23,12 +23,17 @@ async def test_register_user_success(client, db_session, seed_user_groups):
 
     Validates that a new user and an activation token are created in the database.
     """
-    payload = {"email": "testuser@example.com", "password": "StrongPassword123!"}
+    payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!",
+    }
 
     response = await client.post("/api/v1/accounts/register/", json=payload)
     assert response.status_code == 201, "Expected status code 201 Created."
     response_data = response.json()
-    assert response_data["email"] == payload["email"], "Returned email does not match."
+    assert (
+        response_data["email"] == payload["email"]
+    ), "Returned email does not match."
     assert "id" in response_data, "Response does not contain user ID."
 
     stmt_user = select(UserModel).where(UserModel.email == payload["email"])
@@ -50,7 +55,9 @@ async def test_register_user_success(client, db_session, seed_user_groups):
     assert (
         activation_token.user_id == created_user.id
     ), "Activation token's user_id does not match."
-    assert activation_token.token is not None, "Activation token has no token value."
+    assert (
+        activation_token.token is not None
+    ), "Activation token has no token value."
 
     expires_at = activation_token.expires_at
     if expires_at.tzinfo is None:
@@ -67,8 +74,14 @@ async def test_register_user_success(client, db_session, seed_user_groups):
     [
         ("short", "Password must contain at least 8 characters."),
         ("NoDigitHere!", "Password must contain at least one digit."),
-        ("nodigitnorupper@", "Password must contain at least one uppercase letter."),
-        ("NOLOWERCASE1@", "Password must contain at least one lower letter."),
+        (
+            "nodigitnorupper@",
+            "Password must contain at least one uppercase letter.",
+        ),
+        (
+            "NOLOWERCASE1@",
+            "Password must contain at least one lowercase letter.",
+        ),
         (
             "NoSpecial123",
             "Password must contain at least one special character: @, $, !, %, *, ?, #, &.",
@@ -93,7 +106,9 @@ async def test_register_user_password_validation(
     payload = {"email": "testuser@example.com", "password": invalid_password}
 
     response = await client.post("/api/v1/accounts/register/", json=payload)
-    assert response.status_code == 422, "Expected status code 422 for invalid input."
+    assert (
+        response.status_code == 422
+    ), "Expected status code 422 for invalid input."
 
     response_data = response.json()
     assert expected_error in str(
@@ -114,9 +129,14 @@ async def test_register_user_conflict(client, db_session, seed_user_groups):
         db_session: The asynchronous database session fixture.
         seed_user_groups: Fixture that seeds default user groups.
     """
-    payload = {"email": "conflictuser@example.com", "password": "StrongPassword123!"}
+    payload = {
+        "email": "conflictuser@example.com",
+        "password": "StrongPassword123!",
+    }
 
-    response_first = await client.post("/api/v1/accounts/register/", json=payload)
+    response_first = await client.post(
+        "/api/v1/accounts/register/", json=payload
+    )
     assert (
         response_first.status_code == 201
     ), "Expected status code 201 for the first registration."
@@ -128,13 +148,17 @@ async def test_register_user_conflict(client, db_session, seed_user_groups):
         created_user is not None
     ), "User should be created after the first registration."
 
-    response_second = await client.post("/api/v1/accounts/register/", json=payload)
+    response_second = await client.post(
+        "/api/v1/accounts/register/", json=payload
+    )
     assert (
         response_second.status_code == 409
     ), "Expected status code 409 for a duplicate registration."
 
     response_data = response_second.json()
-    expected_message = f"A user with this email {payload['email']} already exists."
+    expected_message = (
+        f"A user with this email {payload['email']} already exists."
+    )
     assert (
         response_data["detail"] == expected_message
     ), f"Expected error message: {expected_message}"
@@ -151,10 +175,17 @@ async def test_register_user_internal_server_error(client, seed_user_groups):
     then verifies that the registration endpoint returns the appropriate HTTP 500 error
     with the expected error message.
     """
-    payload = {"email": "erroruser@example.com", "password": "StrongPassword123!"}
+    payload = {
+        "email": "erroruser@example.com",
+        "password": "StrongPassword123!",
+    }
 
-    with patch("routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError):
-        response = await client.post("/api/v1/accounts/register/", json=payload)
+    with patch(
+        "routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError
+    ):
+        response = await client.post(
+            "/api/v1/accounts/register/", json=payload
+        )
 
         assert (
             response.status_code == 500
@@ -201,7 +232,8 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
     assert not user.is_active, "Newly registered user should not be active."
 
     assert (
-        user.activation_token is not None and user.activation_token.token is not None
+        user.activation_token is not None
+        and user.activation_token.token is not None
     ), "Activation token was not created in the database."
 
     activation_payload = {
@@ -216,7 +248,8 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
         activation_response.status_code == 200
     ), "Expected status code 200 for successful activation."
     assert (
-        activation_response.json()["message"] == "User account activated successfully."
+        activation_response.json()["message"]
+        == "User account activated successfully."
     )
 
     stmt = (
@@ -229,7 +262,9 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
     await db_session.refresh(user)
     assert user.is_active, "User should be active after successful activation."
 
-    stmt = select(ActivationTokenModel).where(ActivationTokenModel.user_id == user.id)
+    stmt = select(ActivationTokenModel).where(
+        ActivationTokenModel.user_id == user.id
+    )
     result = await db_session.execute(stmt)
     token = result.scalars().first()
     assert (
@@ -238,7 +273,9 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
 
 
 @pytest.mark.asyncio
-async def test_activate_user_with_expired_token(client, db_session, seed_user_groups):
+async def test_activate_user_with_expired_token(
+    client, db_session, seed_user_groups
+):
     """
     Test activation with an expired token.
 
@@ -261,7 +298,9 @@ async def test_activate_user_with_expired_token(client, db_session, seed_user_gr
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -272,9 +311,13 @@ async def test_activate_user_with_expired_token(client, db_session, seed_user_gr
     )
     result_token = await db_session.execute(stmt_token)
     activation_token = result_token.scalars().first()
-    assert activation_token is not None, "Activation token should exist for the user."
+    assert (
+        activation_token is not None
+    ), "Activation token should exist for the user."
 
-    activation_token.expires_at = datetime.now(timezone.utc) - timedelta(days=2)
+    activation_token.expires_at = datetime.now(timezone.utc) - timedelta(
+        days=2
+    )
     await db_session.commit()
 
     activation_payload = {
@@ -289,12 +332,15 @@ async def test_activate_user_with_expired_token(client, db_session, seed_user_gr
         activation_response.status_code == 400
     ), "Expected status code 400 for expired token."
     assert (
-        activation_response.json()["detail"] == "Invalid or expired activation token."
+        activation_response.json()["detail"]
+        == "Invalid or expired activation token."
     ), "Expected error message for expired token."
 
 
 @pytest.mark.asyncio
-async def test_activate_user_with_deleted_token(client, db_session, seed_user_groups):
+async def test_activate_user_with_deleted_token(
+    client, db_session, seed_user_groups
+):
     """
     Test activation with a deleted token.
 
@@ -318,7 +364,9 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -329,7 +377,9 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
     )
     result_token = await db_session.execute(stmt_token)
     activation_token = result_token.scalars().first()
-    assert activation_token is not None, "Activation token should exist for the user."
+    assert (
+        activation_token is not None
+    ), "Activation token should exist for the user."
 
     token_value = activation_token.token
 
@@ -340,7 +390,10 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
     )
     await db_session.commit()
 
-    activation_payload = {"email": registration_payload["email"], "token": token_value}
+    activation_payload = {
+        "email": registration_payload["email"],
+        "token": token_value,
+    }
     activation_response = await client.post(
         "/api/v1/accounts/activate/", json=activation_payload
     )
@@ -348,12 +401,15 @@ async def test_activate_user_with_deleted_token(client, db_session, seed_user_gr
         activation_response.status_code == 400
     ), "Expected status code 400 for deleted token."
     assert (
-        activation_response.json()["detail"] == "Invalid or expired activation token."
+        activation_response.json()["detail"]
+        == "Invalid or expired activation token."
     ), "Expected error message for deleted token."
 
 
 @pytest.mark.asyncio
-async def test_activate_already_active_user(client, db_session, seed_user_groups):
+async def test_activate_already_active_user(
+    client, db_session, seed_user_groups
+):
     """
     Test activation of an already active user.
 
@@ -376,7 +432,9 @@ async def test_activate_already_active_user(client, db_session, seed_user_groups
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -389,7 +447,9 @@ async def test_activate_already_active_user(client, db_session, seed_user_groups
     )
     result_token = await db_session.execute(stmt_token)
     activation_token = result_token.scalars().first()
-    assert activation_token is not None, "Activation token should exist for the user."
+    assert (
+        activation_token is not None
+    ), "Activation token should exist for the user."
 
     activation_payload = {
         "email": registration_payload["email"],
@@ -402,7 +462,8 @@ async def test_activate_already_active_user(client, db_session, seed_user_groups
         activation_response.status_code == 400
     ), "Expected status code 400 for already active user."
     assert (
-        activation_response.json()["detail"] == "User account is already active."
+        activation_response.json()["detail"]
+        == "User account is already active."
     ), "Expected error message for already active user."
 
 
@@ -434,7 +495,9 @@ async def test_request_password_reset_token_success(
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -473,7 +536,9 @@ async def test_request_password_reset_token_success(
 
 
 @pytest.mark.asyncio
-async def test_request_password_reset_token_nonexistent_user(client, db_session):
+async def test_request_password_reset_token_nonexistent_user(
+    client, db_session
+):
     """
     Test password reset token request for a non-existent user.
 
@@ -522,11 +587,15 @@ async def test_request_password_reset_token_for_inactive_user(
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     created_user = result.scalars().first()
     assert created_user is not None, "User should be created in the database."
-    assert not created_user.is_active, "User should not be active after registration."
+    assert (
+        not created_user.is_active
+    ), "User should not be active after registration."
 
     reset_payload = {"email": registration_payload["email"]}
     reset_response = await client.post(
@@ -571,7 +640,9 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
         registration_response.status_code == 201
     ), "Expected status code 201 for successful registration."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     created_user = result.scalars().first()
     assert created_user is not None, "User should be created in the database."
@@ -597,7 +668,9 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
     ), "Expected status code 200 for successful activation."
 
     await db_session.refresh(created_user)
-    assert created_user.is_active, "User should be active after successful activation."
+    assert (
+        created_user.is_active
+    ), "User should be active after successful activation."
 
     reset_request_payload = {"email": registration_payload["email"]}
     reset_request_response = await client.post(
@@ -655,14 +728,18 @@ async def test_reset_password_invalid_email(client, db_session):
         "/api/v1/accounts/reset-password/complete/", json=reset_payload
     )
 
-    assert response.status_code == 400, "Expected status code 400 for invalid email."
+    assert (
+        response.status_code == 400
+    ), "Expected status code 400 for invalid email."
     assert (
         response.json()["detail"] == "Invalid email or token."
     ), "Unexpected error message."
 
 
 @pytest.mark.asyncio
-async def test_reset_password_invalid_token(client, db_session, seed_user_groups):
+async def test_reset_password_invalid_token(
+    client, db_session, seed_user_groups
+):
     """
     Test password reset with an incorrect token.
 
@@ -678,7 +755,9 @@ async def test_reset_password_invalid_token(client, db_session, seed_user_groups
     )
     assert response.status_code == 201, "User registration failed."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -698,9 +777,12 @@ async def test_reset_password_invalid_token(client, db_session, seed_user_groups
         "password": "NewSecurePassword123!",
     }
     response = await client.post(
-        "/api/v1/accounts/reset-password/complete/", json=reset_complete_payload
+        "/api/v1/accounts/reset-password/complete/",
+        json=reset_complete_payload,
     )
-    assert response.status_code == 400, "Expected status code 400 for invalid token."
+    assert (
+        response.status_code == 400
+    ), "Expected status code 400 for invalid token."
     assert (
         response.json()["detail"] == "Invalid email or token."
     ), "Unexpected error message."
@@ -714,7 +796,9 @@ async def test_reset_password_invalid_token(client, db_session, seed_user_groups
 
 
 @pytest.mark.asyncio
-async def test_reset_password_expired_token(client, db_session, seed_user_groups):
+async def test_reset_password_expired_token(
+    client, db_session, seed_user_groups
+):
     """
     Test password reset with an expired token.
 
@@ -728,9 +812,13 @@ async def test_reset_password_expired_token(client, db_session, seed_user_groups
     registration_response = await client.post(
         "/api/v1/accounts/register/", json=registration_payload
     )
-    assert registration_response.status_code == 201, "User registration failed."
+    assert (
+        registration_response.status_code == 201
+    ), "User registration failed."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -742,7 +830,9 @@ async def test_reset_password_expired_token(client, db_session, seed_user_groups
     reset_request_response = await client.post(
         "/api/v1/accounts/password-reset/request/", json=reset_request_payload
     )
-    assert reset_request_response.status_code == 200, "Password reset request failed."
+    assert (
+        reset_request_response.status_code == 200
+    ), "Password reset request failed."
 
     stmt_token = select(PasswordResetTokenModel).where(
         PasswordResetTokenModel.user_id == user.id
@@ -760,7 +850,8 @@ async def test_reset_password_expired_token(client, db_session, seed_user_groups
         "password": "NewSecurePassword123!",
     }
     reset_response = await client.post(
-        "/api/v1/accounts/reset-password/complete/", json=reset_complete_payload
+        "/api/v1/accounts/reset-password/complete/",
+        json=reset_complete_payload,
     )
     assert (
         reset_response.status_code == 400
@@ -778,7 +869,9 @@ async def test_reset_password_expired_token(client, db_session, seed_user_groups
 
 
 @pytest.mark.asyncio
-async def test_reset_password_sqlalchemy_error(client, db_session, seed_user_groups):
+async def test_reset_password_sqlalchemy_error(
+    client, db_session, seed_user_groups
+):
     """
     Test password reset when a database commit raises SQLAlchemyError.
 
@@ -799,9 +892,13 @@ async def test_reset_password_sqlalchemy_error(client, db_session, seed_user_gro
     registration_response = await client.post(
         "/api/v1/accounts/register/", json=registration_payload
     )
-    assert registration_response.status_code == 201, "User registration failed."
+    assert (
+        registration_response.status_code == 201
+    ), "User registration failed."
 
-    stmt = select(UserModel).where(UserModel.email == registration_payload["email"])
+    stmt = select(UserModel).where(
+        UserModel.email == registration_payload["email"]
+    )
     result = await db_session.execute(stmt)
     user = result.scalars().first()
     assert user is not None, "User should exist in the database."
@@ -813,7 +910,9 @@ async def test_reset_password_sqlalchemy_error(client, db_session, seed_user_gro
     reset_request_response = await client.post(
         "/api/v1/accounts/password-reset/request/", json=reset_request_payload
     )
-    assert reset_request_response.status_code == 200, "Password reset request failed."
+    assert (
+        reset_request_response.status_code == 200
+    ), "Password reset request failed."
 
     stmt_token = select(PasswordResetTokenModel).where(
         PasswordResetTokenModel.user_id == user.id
@@ -828,9 +927,12 @@ async def test_reset_password_sqlalchemy_error(client, db_session, seed_user_gro
         "password": "NewSecurePassword123!",
     }
 
-    with patch("routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError):
+    with patch(
+        "routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError
+    ):
         reset_response = await client.post(
-            "/api/v1/accounts/reset-password/complete/", json=reset_complete_payload
+            "/api/v1/accounts/reset-password/complete/",
+            json=reset_complete_payload,
         )
 
     assert (
@@ -843,16 +945,23 @@ async def test_reset_password_sqlalchemy_error(client, db_session, seed_user_gro
 
 
 @pytest.mark.asyncio
-async def test_login_user_success(client, db_session, jwt_manager, seed_user_groups):
+async def test_login_user_success(
+    client, db_session, jwt_manager, seed_user_groups
+):
     """
     Test successful login.
 
     Validates that access and refresh tokens are returned, the refresh token is stored in the database,
     and both tokens are valid.
     """
-    user_payload = {"email": "testuser@example.com", "password": "StrongPassword123!"}
+    user_payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!",
+    }
 
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "Default user group should exist."
@@ -871,14 +980,22 @@ async def test_login_user_success(client, db_session, jwt_manager, seed_user_gro
         "password": user_payload["password"],
     }
     response = await client.post("/api/v1/accounts/login/", json=login_payload)
-    assert response.status_code == 201, "Expected status code 201 for successful login."
+    assert (
+        response.status_code == 201
+    ), "Expected status code 201 for successful login."
     response_data = response.json()
-    assert "access_token" in response_data, "Access token is missing in the response."
-    assert "refresh_token" in response_data, "Refresh token is missing in the response."
+    assert (
+        "access_token" in response_data
+    ), "Access token is missing in the response."
+    assert (
+        "refresh_token" in response_data
+    ), "Refresh token is missing in the response."
     assert response_data["access_token"], "Access token is empty."
     assert response_data["refresh_token"], "Refresh token is empty."
 
-    access_token_data = jwt_manager.decode_access_token(response_data["access_token"])
+    access_token_data = jwt_manager.decode_access_token(
+        response_data["access_token"]
+    )
     assert (
         access_token_data["user_id"] == user.id
     ), "Access token does not contain correct user ID."
@@ -890,7 +1007,9 @@ async def test_login_user_success(client, db_session, jwt_manager, seed_user_gro
         refresh_token_data["user_id"] == user.id
     ), "Refresh token does not contain correct user ID."
 
-    stmt_refresh = select(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id)
+    stmt_refresh = select(RefreshTokenModel).where(
+        RefreshTokenModel.user_id == user.id
+    )
     result_refresh = await db_session.execute(stmt_refresh)
     refresh_token_record = result_refresh.scalars().first()
     assert (
@@ -904,7 +1023,9 @@ async def test_login_user_success(client, db_session, jwt_manager, seed_user_gro
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    assert expires_at > datetime.now(timezone.utc), "Refresh token is already expired."
+    assert expires_at > datetime.now(
+        timezone.utc
+    ), "Refresh token is already expired."
 
 
 @pytest.mark.asyncio
@@ -914,7 +1035,10 @@ async def test_login_user_invalid_cases(client, db_session, seed_user_groups):
     1. Non-existent user.
     2. Incorrect password for an existing user.
     """
-    login_payload = {"email": "nonexistent@example.com", "password": "SomePassword123!"}
+    login_payload = {
+        "email": "nonexistent@example.com",
+        "password": "SomePassword123!",
+    }
     response = await client.post("/api/v1/accounts/login/", json=login_payload)
     assert (
         response.status_code == 401
@@ -923,8 +1047,13 @@ async def test_login_user_invalid_cases(client, db_session, seed_user_groups):
         response.json()["detail"] == "Invalid email or password."
     ), "Unexpected error message for non-existent user."
 
-    user_payload = {"email": "testuser@example.com", "password": "CorrectPassword123!"}
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    user_payload = {
+        "email": "testuser@example.com",
+        "password": "CorrectPassword123!",
+    }
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "Default user group should exist."
@@ -954,7 +1083,9 @@ async def test_login_user_invalid_cases(client, db_session, seed_user_groups):
 
 
 @pytest.mark.asyncio
-async def test_login_user_inactive_account(client, db_session, seed_user_groups):
+async def test_login_user_inactive_account(
+    client, db_session, seed_user_groups
+):
     """
     Test login with an inactive user account.
 
@@ -966,7 +1097,9 @@ async def test_login_user_inactive_account(client, db_session, seed_user_groups)
         "password": "StrongPassword123!",
     }
 
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "User group not found."
@@ -986,7 +1119,9 @@ async def test_login_user_inactive_account(client, db_session, seed_user_groups)
     }
     response = await client.post("/api/v1/accounts/login/", json=login_payload)
 
-    assert response.status_code == 403, "Expected status code 403 for inactive user."
+    assert (
+        response.status_code == 403
+    ), "Expected status code 403 for inactive user."
     assert (
         response.json()["detail"] == "User account is not activated."
     ), "Unexpected error message for inactive user."
@@ -999,8 +1134,13 @@ async def test_login_user_commit_error(client, db_session, seed_user_groups):
 
     Validates that the endpoint returns a 500 status code and an appropriate error message.
     """
-    user_payload = {"email": "testuser@example.com", "password": "StrongPassword123!"}
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    user_payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!",
+    }
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "Default user group should exist."
@@ -1019,14 +1159,19 @@ async def test_login_user_commit_error(client, db_session, seed_user_groups):
         "password": user_payload["password"],
     }
 
-    with patch("routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError):
-        response = await client.post("/api/v1/accounts/login/", json=login_payload)
+    with patch(
+        "routes.accounts.AsyncSession.commit", side_effect=SQLAlchemyError
+    ):
+        response = await client.post(
+            "/api/v1/accounts/login/", json=login_payload
+        )
 
     assert (
         response.status_code == 500
     ), "Expected status code 500 for database commit error."
     assert (
-        response.json()["detail"] == "An error occurred while processing the request."
+        response.json()["detail"]
+        == "An error occurred while processing the request."
     ), "Unexpected error message for database commit error."
 
 
@@ -1044,8 +1189,13 @@ async def test_refresh_access_token_success(
     - Use the refresh token to obtain a new access token.
     - Verify that the new access token contains the correct user ID.
     """
-    user_payload = {"email": "testuser@example.com", "password": "StrongPassword123!"}
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    user_payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!",
+    }
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "Default user group should exist."
@@ -1063,7 +1213,9 @@ async def test_refresh_access_token_success(
         "email": user_payload["email"],
         "password": user_payload["password"],
     }
-    login_response = await client.post("/api/v1/accounts/login/", json=login_payload)
+    login_response = await client.post(
+        "/api/v1/accounts/login/", json=login_payload
+    )
     assert (
         login_response.status_code == 201
     ), "Expected status code 201 for successful login."
@@ -1078,10 +1230,14 @@ async def test_refresh_access_token_success(
         refresh_response.status_code == 200
     ), "Expected status code 200 for successful token refresh."
     refresh_data = refresh_response.json()
-    assert "access_token" in refresh_data, "Access token is missing in the response."
+    assert (
+        "access_token" in refresh_data
+    ), "Access token is missing in the response."
     assert refresh_data["access_token"], "Access token is empty."
 
-    access_token_data = jwt_manager.decode_access_token(refresh_data["access_token"])
+    access_token_data = jwt_manager.decode_access_token(
+        refresh_data["access_token"]
+    )
     assert (
         access_token_data["user_id"] == user.id
     ), "Access token does not contain correct user ID."
@@ -1151,9 +1307,14 @@ async def test_refresh_access_token_user_not_found(
     - Attempt to refresh the access token using the invalid refresh token.
     - Verify that the endpoint returns a 404 error with the expected message.
     """
-    user_payload = {"email": "testuser@example.com", "password": "StrongPassword123!"}
+    user_payload = {
+        "email": "testuser@example.com",
+        "password": "StrongPassword123!",
+    }
 
-    stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    stmt = select(UserGroupModel).where(
+        UserGroupModel.name == UserGroupEnum.USER
+    )
     result = await db_session.execute(stmt)
     user_group = result.scalars().first()
     assert user_group is not None, "Default user group should exist."
@@ -1168,7 +1329,9 @@ async def test_refresh_access_token_user_not_found(
     await db_session.commit()
 
     invalid_user_id = 9999
-    refresh_token = jwt_manager.create_refresh_token({"user_id": invalid_user_id})
+    refresh_token = jwt_manager.create_refresh_token(
+        {"user_id": invalid_user_id}
+    )
 
     refresh_token_record = RefreshTokenModel.create(
         user_id=invalid_user_id, days_valid=7, token=refresh_token
