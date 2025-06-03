@@ -277,7 +277,7 @@ async def reset_password(
 
     if not token_record or token_record.token != data.token:
         if token_record:
-            await db.run_sync(lambda s: s.delete(token_record))
+            await db.delete(token_record)
             await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -286,7 +286,7 @@ async def reset_password(
 
     expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
-        await db.run_sync(lambda s: s.delete(token_record))
+        await db.delete(token_record)
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -295,7 +295,8 @@ async def reset_password(
 
     try:
         user._hashed_password = hash_password(data.password)
-        await db.run_sync(lambda s: s.delete(token_record))
+        db.add(user)
+        await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
         await db.rollback()
