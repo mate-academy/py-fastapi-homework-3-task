@@ -22,4 +22,31 @@ from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
 
-# Write your code here
+@router.post("/auth/register")
+async def register_user():
+    pass
+
+
+@router.post("/auth/activate")
+async def activate_account():
+    pass
+
+
+@router.post("/auth/password-reset/request")
+async def request_password_reset():
+    pass
+
+
+@router.post("/auth/password-reset/confirm")
+async def confirm_password_reset():
+    pass
+
+
+@router.post("/auth/login")
+async def login_user():
+    pass
+
+
+@router.post("/auth/refresh")
+async def refresh_access_token():
+    pass
