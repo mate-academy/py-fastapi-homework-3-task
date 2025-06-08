@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import BaseAppSettings, get_settings, get_jwt_auth_manager
 from database import (
     get_db,
     UserModel,
@@ -17,7 +18,6 @@ from database import (
     RefreshTokenModel,
 )
 from security.token_manager import JWTAuthManager
-from database.session_sqlite import settings
 from exceptions import TokenExpiredError, InvalidTokenError
 from schemas import (
     UserRegistrationResponseSchema,
@@ -31,22 +31,6 @@ from schemas import (
     TokenRefreshResponseSchema,
     TokenRefreshRequestSchema,
 )
-
-
-def get_jwt_manager() -> JWTAuthManager:
-    """
-    Returns an instance of JWTAuthManager, configured with settings.
-    Handles potential differences in settings attribute names between dev and test.
-    """
-    algorithm = getattr(settings, "ALGORITHM", None)
-    if algorithm is None:
-        algorithm = getattr(settings, "JWT_SIGNING_ALGORITHM", "HS256")
-
-    return JWTAuthManager(
-        secret_key_access=settings.SECRET_KEY_ACCESS,
-        secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=algorithm,
-    )
 
 
 router = APIRouter(tags=["Accounts"])
@@ -124,7 +108,6 @@ async def register_user(
         )
     except Exception as e:
         await db.rollback()
-        print(f"Error during user registration: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during user creation.",
@@ -214,7 +197,6 @@ async def activate_user_account(
         raise
     except Exception as e:
         await db.rollback()
-        print(f"Error during account activation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during account activation.",
@@ -249,9 +231,6 @@ async def request_password_reset(
         )
 
         if not user or not user.is_active:
-            print(
-                f"Password reset requested for non-existent or inactive email: {request_data.email}"
-            )
             return MessageResponseSchema(
                 message="If you are registered, you will receive an email with instructions."
             )
@@ -270,17 +249,12 @@ async def request_password_reset(
         await db.commit()
         await db.refresh(new_reset_token)
 
-        print(
-            f"Generated password reset token for {user.email}: {new_reset_token.token}"
-        )
-
         return MessageResponseSchema(
             message="If you are registered, you will receive an email with instructions."
         )
 
     except Exception as e:
         await db.rollback()
-        print(f"Error requesting password reset: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred during password reset request.",
@@ -377,7 +351,6 @@ async def complete_password_reset(
         raise
     except Exception as e:
         await db.rollback()
-        print(f"Error completing password reset: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password.",
@@ -410,7 +383,8 @@ async def complete_password_reset(
 async def user_login(
     login_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManager = Depends(get_jwt_manager),
+    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
 ):
     """
     **Аутентифікація користувача та видача JWT токенів.**
@@ -484,7 +458,6 @@ async def user_login(
         raise
     except Exception as e:
         await db.rollback()
-        print(f"Помилка під час входу користувача: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request.",
@@ -517,7 +490,8 @@ async def user_login(
 async def refresh_tokens(
     refresh_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManager = Depends(get_jwt_manager),
+    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
 ):
     try:
         payload = jwt_manager.decode_refresh_token(refresh_data.refresh_token)
