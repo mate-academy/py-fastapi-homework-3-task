@@ -168,7 +168,7 @@ class TokenBaseModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     token: Mapped[str] = mapped_column(
-        String(64), unique=True, nullable=False, default=generate_secure_token
+        String(512), unique=True, nullable=False, default=generate_secure_token
     )
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -187,8 +187,6 @@ class ActivationTokenModel(TokenBaseModel):
     user: Mapped[UserModel] = relationship(
         "UserModel", back_populates="activation_token"
     )
-
-    __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
