@@ -6,7 +6,7 @@ from sqlalchemy import select, delete, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 
-from database import (
+from src.database import (
     UserModel,
     ActivationTokenModel,
     PasswordResetTokenModel,
@@ -185,7 +185,8 @@ async def test_activate_account_success(client, db_session, seed_user_groups):
     }
 
     activation_response = await client.post("/api/v1/accounts/activate/", json=activation_payload)
-    assert activation_response.status_code == 200, "Expected status code 200 for successful activation."
+    assert activation_response.status_code == 200, ("Expected status code 200 for successful activation. "
+                                                    f"Response: {activation_response.text}")
     assert activation_response.json()["message"] == "User account activated successfully."
 
     stmt = (
