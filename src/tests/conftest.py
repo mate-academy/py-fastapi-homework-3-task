@@ -3,7 +3,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import get_settings
+from config.dependencies import get_settings
 from database import (
     reset_database,
     get_db_contextmanager,
