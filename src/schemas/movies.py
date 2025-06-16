@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional, List
 
 from pydantic import BaseModel, Field, field_validator
@@ -90,7 +90,7 @@ class MovieBaseSchema(BaseModel):
     @field_validator("date")
     @classmethod
     def validate_date(cls, value):
-        current_year = datetime.now().year
+        current_year = datetime.now(timezone.utc).year
         if value.year > current_year + 1:
             raise ValueError(f"The year in 'date' cannot be greater than {current_year + 1}.")
         return value

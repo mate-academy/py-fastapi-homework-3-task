@@ -25,3 +25,6 @@ def validate_email(user_email: str) -> str:
         raise ValueError(str(error))
     else:
         return email
+
+
+validate_password = validate_password_strength

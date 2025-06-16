@@ -12,7 +12,6 @@ def hash_password(password: str) -> str:
     Hash a plain-text password using the configured password context.
 
     This function takes a plain-text password and returns its bcrypt hash.
-    The bcrypt algorithm is used with a specified number of rounds for enhanced security.
 
     Args:
         password (str): The plain-text password to hash.

@@ -770,14 +770,14 @@ If the request is successful, the endpoint returns the following JSON response:
 - **409 Conflict**:
     ```json
     {
-      "detail": "A user with this email test@example.com already exists."
+      "message": "A user with this email test@example.com already exists."
     }
     ```
 
 - **500 Internal Server Error**:
     ```json
     {
-      "detail": "An error occurred during user creation."
+      "message": "An error occurred during user creation."
     }
     ```
 
@@ -857,13 +857,13 @@ The endpoint expects a JSON object with the following structure:
         - If the token is invalid or expired, the response includes:
         ```json
         {
-          "detail": "Invalid or expired activation token."
+          "message": "Invalid or expired activation token."
         }
         ```
         - If the user's account is already active, the response includes:
         ```json
         {
-          "detail": "User account is already active."
+          "message": "User account is already active."
         }
         ```
 
@@ -1034,13 +1034,13 @@ Example:
     - **Invalid Token**:
       ```json
       {
-        "detail": "Invalid email or token."
+        "message": "Invalid email or token."
       }
       ```
     - **Expired Token**:
       ```json
       {
-        "detail": "Invalid email or token."
+        "message": "Invalid email or token."
       }
       ```
 
@@ -1048,7 +1048,7 @@ Example:
   - **Example**:
     ```json
     {
-      "detail": "An error occurred while resetting the password."
+      "message": "An error occurred while resetting the password."
     }
     ```
 
@@ -1137,7 +1137,7 @@ The endpoint should return the following JSON response upon successful login:
   - Example response:
     ```json
     {
-      "detail": "Invalid email or password."
+      "message": "Invalid email or password."
     }
     ```
 
@@ -1146,7 +1146,7 @@ The endpoint should return the following JSON response upon successful login:
   - Example response:
     ```json
     {
-      "detail": "User account is not activated."
+      "message": "User account is not activated."
     }
     ```
 
@@ -1155,7 +1155,7 @@ The endpoint should return the following JSON response upon successful login:
   - Example response:
     ```json
     {
-      "detail": "An error occurred while processing the request."
+      "message": "An error occurred while processing the request."
     }
     ```
 
@@ -1257,21 +1257,21 @@ Upon successful execution, the endpoint should return a new access token in the 
   - Example response:
     ```json
     {
-      "detail": "Token has expired."
+      "message": "Token has expired."
     }
     ```
 - **401 Unauthorized**: The provided refresh token does not exist in the database.
   - Example response:
     ```json
     {
-      "detail": "Refresh token not found."
+      "message": "Refresh token not found."
     }
     ```
 - **404 Not Found**: The user associated with the refresh token does not exist.
   - Example response:
     ```json
     {
-      "detail": "User not found."
+      "message": "User not found."
     }
     ```
 
