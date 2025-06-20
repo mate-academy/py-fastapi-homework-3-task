@@ -3,7 +3,7 @@ from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError, InternalError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
@@ -35,7 +35,7 @@ router = APIRouter()
 @router.post("/register/", status_code=201, response_model=UserRegisterResponse)
 async def register_user(user: UserRegister, db: AsyncSession = Depends(get_postgresql_db)):
     result_users_emails = await db.execute(select(UserModel.email))
-    users_emails = await result_users_emails.scalars().all()
+    users_emails = (await result_users_emails.scalars()).all()
     if user.email in users_emails:
         raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
     try:
@@ -53,6 +53,8 @@ async def register_user(user: UserRegister, db: AsyncSession = Depends(get_postg
             user_id=new_user.id
         )
         db.add(token)
+        await db.commit()
+        await db.refresh(token)
         new_user.activation_token = token
 
         result_groups = await db.execute(select(UserGroupModel).filter(UserGroupModel.name == "USER"))
@@ -114,16 +116,16 @@ async def password_reset_request(user_data: UserResetPassword, db: AsyncSession 
     user = await result_user.scalar_one_or_none()
     if user and user.is_active:
         try:
+            if not user.password_reset_token:
+                raise HTTPException(status_code=400, detail="User has not password reset token.")
+
             reset_token = user.password_reset_token
             result_reset_token_model = await db.execute(
                 select(PasswordResetTokenModel).where(PasswordResetTokenModel.token == reset_token))
             password_reset_obj = await result_reset_token_model.scalar_one_or_none()
 
-            if not password_reset_obj:
-                raise HTTPException(status_code=400, detail="User has not password reset token.")
-
             await db.delete(password_reset_obj)
-            await db.delete(user.password_reset_token)
+
             new_reset_token_model = PasswordResetTokenModel(
                 user_id=user.id
             )
@@ -151,9 +153,10 @@ async def reset_password_complete(user_data: UserResetPasswordComplete, db: Asyn
         select(PasswordResetTokenModel).where(PasswordResetTokenModel.token == user_data.token))
     token = await result_token.scalar_one_or_none()
     user = await result_user.scalar_one_or_none()
-    password = validate_password_strength(user_data.password)
+    password = user_data.password
+    validate_password_strength(password)
 
-    if not token or token.expires_at < datetime.now(timezone.utc):
+    if token and token.expires_at < datetime.now(timezone.utc):
         await db.delete(token)
         await db.commit()
 
@@ -165,6 +168,7 @@ async def reset_password_complete(user_data: UserResetPasswordComplete, db: Asyn
     try:
         hashed_password = hash_password(user_data.password)
         user.hashed_password = hashed_password
+        db.add(user)
         await db.delete(token)
         await db.commit()
 
@@ -184,8 +188,8 @@ async def login(
         settings: BaseAppSettings = Depends(get_settings),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager_with_settings),
         db: AsyncSession = Depends(get_postgresql_db)):
-    password = validate_password_strength(user_data.password)
-    email = validate_email(user_email=str(user_data.email))
+    password = user_data.password
+    email = user_data.email
 
     result_user = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     user = await result_user.scalar_one_or_none()
@@ -225,7 +229,7 @@ async def refresh(user_data: RefreshAccessTokenRequest, db: AsyncSession = Depen
 
         result_refresh_token = await db.execute(
             select(RefreshTokenModel).filter(RefreshTokenModel.token == user_data.refresh_token))
-        refresh_token = result_refresh_token.scalar_one_or_none()
+        refresh_token = await result_refresh_token.scalar_one_or_none()
 
         if not refresh_token:
             raise HTTPException(status_code=401, detail="Refresh token not found.")

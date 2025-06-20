@@ -35,7 +35,6 @@ class LoginResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
-    token_type: str = "bearer"
 
 
 class RefreshAccessTokenResponse(BaseModel):
