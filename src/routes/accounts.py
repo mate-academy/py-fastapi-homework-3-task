@@ -34,8 +34,8 @@ router = APIRouter()
 
 @router.post("/register/", status_code=201, response_model=UserRegisterResponse)
 async def register_user(user: UserRegister, db: AsyncSession = Depends(get_postgresql_db)):
-    result_users_emails = await db.execute(select(UserModel.email)).all()
-    users_emails = await result_users_emails.scalars()
+    result_users_emails = await db.execute(select(UserModel.email))
+    users_emails = await result_users_emails.scalars().all()
     if user.email in users_emails:
         raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
     try:
@@ -50,21 +50,21 @@ async def register_user(user: UserRegister, db: AsyncSession = Depends(get_postg
         await db.refresh(new_user)
 
         token = ActivationTokenModel(
-            user_id=user.id
+            user_id=new_user.id
         )
         db.add(token)
-        user.activation_token = token
+        new_user.activation_token = token
 
         result_groups = await db.execute(select(UserGroupModel).filter(UserGroupModel.name == "USER"))
         group_user = await result_groups.scalar_one_or_none()
 
         if not group_user:
-            group = UserGroupModel(
+            group_user = UserGroupModel(
                 name=UserGroupEnum.USER
             )
-            db.add(group)
+            db.add(group_user)
             await db.commit()
-            await db.refresh(group)
+            await db.refresh(group_user)
 
         new_user.group_id = group_user.id
         db.add(new_user)
@@ -75,9 +75,9 @@ async def register_user(user: UserRegister, db: AsyncSession = Depends(get_postg
 
 
 @router.post("/activate/", status_code=200)
-async def activate_account(db: AsyncSession = Depends(get_postgresql_db), user_data=UserActivate):
+async def activate_account(user_data: UserActivate, db: AsyncSession = Depends(get_postgresql_db)):
     result_user = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
-    user = result_user.scalar_one_or_none()
+    user = await result_user.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     try:
@@ -85,10 +85,10 @@ async def activate_account(db: AsyncSession = Depends(get_postgresql_db), user_d
             select(ActivationTokenModel).where(ActivationTokenModel.token == user_data.token))
         activate_token = await result_activate_token.scalar_one_or_none()
 
-        if not activate_token or not activate_token == user_data.token:
+        if not activate_token or not activate_token.token == user_data.token:
             raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-        if activate_token.expires_at > datetime.now(timezone.utc) or user.activation_token != user_data.token:
+        if activate_token.expires_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
         if user.is_active is True:
@@ -145,7 +145,7 @@ async def password_reset_request(user_data: UserResetPassword, db: AsyncSession 
 
 
 @router.post("/reset-password/complete/", status_code=200)
-async def reset_password_complete(db: AsyncSession = Depends(get_postgresql_db), user_data=UserResetPasswordComplete):
+async def reset_password_complete(user_data: UserResetPasswordComplete, db: AsyncSession = Depends(get_postgresql_db)):
     result_user = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     result_token = await db.execute(
         select(PasswordResetTokenModel).where(PasswordResetTokenModel.token == user_data.token))
@@ -159,7 +159,7 @@ async def reset_password_complete(db: AsyncSession = Depends(get_postgresql_db),
 
         raise HTTPException(status_code=400, detail="Invalid email or token")
 
-    if not "@" in user_data.email or not user.is_active or not user:
+    if not user or not "@" in user_data.email or not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid data or email")
 
     try:
@@ -190,13 +190,10 @@ async def login(
     result_user = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     user = await result_user.scalar_one_or_none()
 
-    if not verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password.")
-
     if not user or not user.is_active:
         raise HTTPException(status_code=403, detail="User account is not activated.")
 
-    if user.hashed_password != hash_password(password):
+    if not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
     try:
@@ -234,7 +231,7 @@ async def refresh(user_data: RefreshAccessTokenRequest, db: AsyncSession = Depen
             raise HTTPException(status_code=401, detail="Refresh token not found.")
 
         result_user = await db.execute(select(UserModel).where(UserModel.id == token_user_id))
-        user = result_user.scalar_one_or_none()
+        user = await result_user.scalar_one_or_none()
 
         if not user:
             raise HTTPException(status_code=404, detail="User not found.")
