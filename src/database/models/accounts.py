@@ -14,6 +14,7 @@ from sqlalchemy import (
     Date,
     UniqueConstraint
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
@@ -23,8 +24,8 @@ from sqlalchemy.orm import (
 
 from database import Base
 from database.validators import accounts as validators
-from security.passwords import hash_password, verify_password
-from security.utils import generate_secure_token
+from src.security.passwords import hash_password, verify_password
+from src.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -67,13 +68,13 @@ class UserModel(Base):
     group_id: Mapped[int] = mapped_column(ForeignKey("user_groups.id", ondelete="CASCADE"), nullable=False)
     group: Mapped["UserGroupModel"] = relationship("UserGroupModel", back_populates="users")
 
-    activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
+    activation_tokens: Mapped[List["ActivationTokenModel"]] = relationship(
         "ActivationTokenModel",
         back_populates="user",
         cascade="all, delete-orphan"
     )
 
-    password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
+    password_reset_tokens: Mapped[List["PasswordResetTokenModel"]] = relationship(
         "PasswordResetTokenModel",
         back_populates="user",
         cascade="all, delete-orphan"
@@ -99,12 +100,6 @@ class UserModel(Base):
 
     @classmethod
     def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
-        """
-        Factory method to create a new UserModel instance.
-
-        This method simplifies the creation of a new user by handling
-        password hashing and setting required attributes.
-        """
         user = cls(email=email, group_id=group_id)
         user.password = raw_password
         return user
@@ -115,16 +110,10 @@ class UserModel(Base):
 
     @password.setter
     def password(self, raw_password: str) -> None:
-        """
-        Set the user's password after validating its strength and hashing it.
-        """
         validators.validate_password_strength(raw_password)
         self._hashed_password = hash_password(raw_password)
 
     def verify_password(self, raw_password: str) -> bool:
-        """
-        Verify the provided password against the stored hashed password.
-        """
         return verify_password(raw_password, self._hashed_password)
 
     @validates("email")
@@ -180,47 +169,80 @@ class TokenBaseModel(Base):
 class ActivationTokenModel(TokenBaseModel):
     __tablename__ = "activation_tokens"
 
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="activation_token")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="activation_tokens")
 
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
+    def is_expired(self):
+        return datetime.now(timezone.utc) > self.expires_at
+
+    @classmethod
+    async def create(cls, db: AsyncSession, user_id: int) -> "ActivationTokenModel":
+        token = generate_secure_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(days=1)
+        token_instance = cls(
+            user_id=user_id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(token_instance)
+        await db.flush()
+        return token_instance
+
+
+
 
 class PasswordResetTokenModel(TokenBaseModel):
     __tablename__ = "password_reset_tokens"
 
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="password_reset_token")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="password_reset_tokens")
 
     __table_args__ = (UniqueConstraint("user_id"),)
 
     def __repr__(self):
         return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
+    def is_expired(self):
+        return datetime.now(timezone.utc) > self.expires_at
+
+    @classmethod
+    async def create(cls, db: AsyncSession, user_id: int) -> "PasswordResetTokenModel":
+        token = generate_secure_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        token_instance = cls(
+            user_id=user_id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(token_instance)
+        await db.flush()
+        return token_instance
+
 
 class RefreshTokenModel(TokenBaseModel):
     __tablename__ = "refresh_tokens"
 
-    user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
+    user: Mapped["UserModel"] = relationship("UserModel", back_populates="refresh_tokens")
     token: Mapped[str] = mapped_column(
         String(512),
         unique=True,
         nullable=False,
-        default=generate_secure_token
     )
 
     @classmethod
-    def create(cls, user_id: int | Mapped[int], days_valid: int, token: str) -> "RefreshTokenModel":
-        """
-        Factory method to create a new RefreshTokenModel instance.
-
-        This method simplifies the creation of a new refresh token by calculating
-        the expiration date based on the provided number of valid days and setting
-        the required attributes.
-        """
+    async def create(cls, db: AsyncSession, user_id: int, token: str, days_valid: int = 7) -> "RefreshTokenModel":
         expires_at = datetime.now(timezone.utc) + timedelta(days=days_valid)
-        return cls(user_id=user_id, expires_at=expires_at, token=token)
+        token_instance = cls(
+            user_id=user_id,
+            token=token,
+            expires_at=expires_at,
+        )
+        db.add(token_instance)
+        await db.flush()
+        return token_instance
 
     def __repr__(self):
         return f"<RefreshTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
