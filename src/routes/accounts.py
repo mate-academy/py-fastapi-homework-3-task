@@ -34,6 +34,7 @@ from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
 
+
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -56,6 +57,12 @@ async def register(
         group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
         group_result = await db.execute(group_stmt)
         group_user = group_result.scalars().first()
+
+        if not group_user:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="An error occurred during add group to user."
+            )
 
         db_user = UserModel.create(
             email=user_data.email,
@@ -121,6 +128,7 @@ async def activate(
     await db.delete(token_record)
     await db.commit()
     return MessageResponseSchema(message="User account activated successfully.")
+
 
 @router.post("/password-reset/request/", response_model=MessageResponseSchema)
 async def password_reset_request(
@@ -213,6 +221,7 @@ async def password_reset_complete(
         message="Password reset successfully."
     )
 
+
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
@@ -264,6 +273,7 @@ async def login_user(
         refresh_token=jwt_refresh_token,
         token_type="bearer"
     )
+
 
 @router.post("/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh(

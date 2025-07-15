@@ -24,7 +24,6 @@ class UserRegistrationRequestSchema(UserBase):
 class UserRegistrationResponseSchema(UserBase):
     id: int
 
-
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -64,4 +63,3 @@ class TokenRefreshRequestSchema(BaseModel):
 
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
-
