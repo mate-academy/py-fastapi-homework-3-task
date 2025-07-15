@@ -53,7 +53,7 @@ class UserLoginResponseSchema(BaseModel):
 
 class UserLoginRequestSchema(BaseModel):
     email: EmailStr
-    password: str = "bearer"
+    password: str
 
 
 class TokenRefreshRequestSchema(BaseModel):
