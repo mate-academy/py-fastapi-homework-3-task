@@ -22,8 +22,8 @@ class Settings(BaseAppSettings):
     SECRET_KEY_ACCESS: str = os.getenv("SECRET_KEY_ACCESS", os.urandom(32))
     SECRET_KEY_REFRESH: str = os.getenv("SECRET_KEY_REFRESH", os.urandom(32))
     JWT_SIGNING_ALGORITHM: str = os.getenv("JWT_SIGNING_ALGORITHM", "HS256")
-    SECRET_KEY_ACTIVATION: str = os.getenv("SECRET_KEY_ACTIVATION", os.urandom(32))
-    SECRET_KEY_PASSWORD: str = os.getenv("SECRET_KEY_PASSWORD", "<PASSWORD>")
+    SECRET_KEY_ACTIVATION: str = os.getenv("SECRET_KEY_ACTIVATION")
+    SECRET_KEY_PASSWORD: str = os.getenv("SECRET_KEY_PASSWORD")
 
 
 class TestingSettings(BaseAppSettings):

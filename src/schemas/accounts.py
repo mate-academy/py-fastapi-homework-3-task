@@ -36,7 +36,7 @@ class UserPasswordResetRequestBase(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def password_validator(cls, v: str) -> str:
+    def email_validator(cls, v: str) -> str:
         return validate_email(v)
 
 

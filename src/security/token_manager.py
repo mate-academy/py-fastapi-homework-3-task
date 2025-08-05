@@ -138,6 +138,6 @@ class JWTAuthManager(JWTAuthManagerInterface):
 
     def verify_password_reset_token_or_raise(self, token: str) -> None:
         """
-        Verify an activation token and raise an error if it's invalid or expired.
+        Verify an password reset token and raise an error if it's invalid or expired.
         """
         self.decode_password_reset_token(token)
