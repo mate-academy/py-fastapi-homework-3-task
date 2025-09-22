@@ -1048,7 +1048,7 @@ Example:
   - **Example**:
     ```json
     {
-      "detail": "An error occurred while resetting the password."
+      "detail": "An error occurred while resetting the new_password."
     }
     ```
 
@@ -1137,7 +1137,7 @@ The endpoint should return the following JSON response upon successful login:
   - Example response:
     ```json
     {
-      "detail": "Invalid email or password."
+      "detail": "Invalid email or new_password."
     }
     ```
 
