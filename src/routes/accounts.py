@@ -219,7 +219,7 @@ async def reset_user_password_complete(
         )
 
     try:
-        setattr(user, "password", hash_password(request_data.password))
+        user.password = request_data.password
         await db.delete(reset_token)
         await db.commit()
         return MessageResponseSchema(
