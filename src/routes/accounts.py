@@ -111,8 +111,12 @@ async def activate_user(
 ):
     result_token = await db.execute(
         select(ActivationTokenModel)
+        .join(UserModel)
         .options(joinedload(ActivationTokenModel.user))
-        .where(ActivationTokenModel.token == user_data.token)
+        .where(
+            ActivationTokenModel.token == user_data.token,
+            UserModel.email == user_data.email
+        )
     )
     activation_token = result_token.scalar_one_or_none()
 
@@ -122,6 +126,8 @@ async def activate_user(
             detail="Invalid or expired activation token."
         )
     if ensure_utc(activation_token.expires_at) < datetime.now(timezone.utc):
+        await db.delete(activation_token)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token."
