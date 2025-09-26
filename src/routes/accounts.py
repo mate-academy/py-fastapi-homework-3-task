@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from config import get_jwt_auth_manager
+from config import get_jwt_auth_manager, BaseAppSettings, get_settings
 from database import (
     get_db,
     UserModel,
@@ -16,7 +16,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from exceptions import TokenExpiredError
+from exceptions import TokenExpiredError, InvalidTokenError
 from security.interfaces import JWTAuthManagerInterface
 from schemas.accounts import (
     UserRegistrationRequestSchema,
@@ -158,7 +158,7 @@ async def reset_user_password(
     if user and user.is_active:
         await db.execute(
             delete(PasswordResetTokenModel).where(
-                PasswordResetTokenModel.user == user
+                PasswordResetTokenModel.user_id == user.id
             )
         )
         reset_token = PasswordResetTokenModel(user=user)
@@ -219,7 +219,7 @@ async def reset_user_password_complete(
         )
 
     try:
-        setattr(user, "password", request_data.password)
+        setattr(user, "password", hash_password(request_data.password))
         await db.delete(reset_token)
         await db.commit()
         return MessageResponseSchema(
@@ -241,7 +241,8 @@ async def reset_user_password_complete(
 async def user_login(
         request_data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        settings: BaseAppSettings = Depends(get_settings)
 ):
     result_user = await db.execute(
         select(UserModel)
@@ -274,7 +275,7 @@ async def user_login(
     try:
         refresh_token_obj = RefreshTokenModel.create(
             user_id=user.id,
-            days_valid=7,
+            days_valid=settings.LOGIN_TIME_DAYS,
             token=refresh_token
         )
         db.add(refresh_token_obj)
@@ -307,6 +308,11 @@ async def refresh_user_access_token(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token has expired."
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid refresh token."
         )
 
     result_token = await db.execute(
