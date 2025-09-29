@@ -3,8 +3,11 @@ from typing import Optional
 
 from jose import jwt, JWTError, ExpiredSignatureError
 
-from exceptions import TokenExpiredError, InvalidTokenError
-from security.interfaces import JWTAuthManagerInterface
+from src.exceptions import TokenExpiredError, InvalidTokenError
+from src.security.interfaces import JWTAuthManagerInterface
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class JWTAuthManager(JWTAuthManagerInterface):
@@ -70,7 +73,7 @@ class JWTAuthManager(JWTAuthManagerInterface):
         except ExpiredSignatureError:
             raise TokenExpiredError
         except JWTError as error:
-            print(error)
+            logger.error("JWT verification failed", exc_info=error)
             raise InvalidTokenError
 
     def verify_refresh_token_or_raise(self, token: str) -> None:
