@@ -21,10 +21,10 @@ from sqlalchemy.orm import (
     validates
 )
 
-from database import Base
-from database.validators import accounts as validators
-from security.passwords import hash_password, verify_password
-from security.utils import generate_secure_token
+from src.database import Base
+from src.database.validators import accounts as validators
+from src.security.passwords import hash_password, verify_password
+from src.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -70,7 +70,8 @@ class UserModel(Base):
     activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
         "ActivationTokenModel",
         back_populates="user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        uselist=False
     )
 
     password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
