@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -320,7 +320,7 @@ async def get_movie_by_id(
             },
         },
     },
-    status_code=204
+    status_code=status.HTTP_204_NO_CONTENT
 )
 async def delete_movie(
         movie_id: int,

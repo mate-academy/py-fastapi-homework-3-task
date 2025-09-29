@@ -25,16 +25,15 @@ from src.schemas import (
     ActivationRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
-    UserLoginRequestSchema,
     UserLoginResponseSchema,
+    UserLoginRequestSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
-from src.exceptions import BaseSecurityError, TokenExpiredError, InvalidTokenError
+from src.exceptions import TokenExpiredError, InvalidTokenError
 from src.security.interfaces import JWTAuthManagerInterface
 from src.security.passwords import hash_password
 from src.database.models.accounts import verify_password
-from pydantic import ValidationError
 
 router = APIRouter()
 
@@ -99,7 +98,7 @@ async def activate_account(
     result = await db.execute(
         select(UserModel)
         .options(selectinload(UserModel.activation_token))
-        .where(UserModel.email == data.email)
+        .where(UserModel.email == data.email.lower())
     )
     user = result.scalar_one_or_none()
 
@@ -120,7 +119,8 @@ async def activate_account(
     if (
         not token_obj
         or token_obj.token != data.token
-        or token_obj.expires_at < datetime.now(timezone.utc).replace(tzinfo=None)
+        or token_obj.expires_at.replace(tzinfo=timezone.utc)
+        < datetime.now(timezone.utc)
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -152,12 +152,7 @@ async def request_password_reset(
         return success_response
 
     await db.execute(
-        select(PasswordResetTokenModel)
-        .where(PasswordResetTokenModel.user_id == user.id)
-        .execution_options(synchronize_session="fetch")
-    )
-    await db.execute(
-        PasswordResetTokenModel.__table__.delete().where(
+        delete(PasswordResetTokenModel).where(
             PasswordResetTokenModel.user_id == user.id
         )
     )
@@ -166,7 +161,7 @@ async def request_password_reset(
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
 
     new_token = PasswordResetTokenModel(
-        user_id=user.id, token=token, expires_at=expires_at
+        user_id=user.id, token=token, expires_at=expires_at.replace(tzinfo=timezone.utc)
     )
     db.add(new_token)
     await db.commit()
@@ -178,7 +173,9 @@ async def request_password_reset(
 async def reset_password_complete(
     data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(UserModel).where(UserModel.email == data.email))
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == data.email.lower())
+    )
     user = result.scalar_one_or_none()
 
     if not user or not user.is_active:
@@ -194,9 +191,9 @@ async def reset_password_complete(
     )
     reset_token = result.scalar_one_or_none()
 
-    if not reset_token or reset_token.expires_at < datetime.now(timezone.utc).replace(
-        tzinfo=None
-    ):
+    if not reset_token or reset_token.expires_at.replace(
+        tzinfo=timezone.utc
+    ) < datetime.now(timezone.utc):
 
         await db.execute(
             delete(PasswordResetTokenModel).where(
@@ -234,7 +231,9 @@ async def login(
     settings: BaseAppSettings = Depends(get_settings),
 ):
 
-    result = await db.execute(select(UserModel).where(UserModel.email == data.email))
+    result = await db.execute(
+        select(UserModel).where(UserModel.email == data.email.lower())
+    )
     user = result.scalars().first()
 
     if not user or not verify_password(data.password, user._hashed_password):
@@ -249,7 +248,7 @@ async def login(
             detail="User account is not activated.",
         )
 
-    token_data = {"user_id": user.id, "email": user.email}
+    token_data = {"user_id": cast(int, user.id), "email": user.email}
     access_token_value = jwt_manager.create_access_token(data=token_data)
     refresh_token_value = jwt_manager.create_refresh_token(data=token_data)
 
@@ -305,7 +304,7 @@ async def refresh(
         )
 
     user_data = await db.execute(
-        select(UserModel).where(UserModel.id == RefreshTokenModel.user_id)
+        select(UserModel).where(UserModel.id == refresh_token.user_id)
     )
     user = user_data.scalars().first()
     if not user:
@@ -313,7 +312,7 @@ async def refresh(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
-    token_data = {"user_id": user.id, "email": user.email}
+    token_data = {"user_id": cast(int, user.id), "email": user.email}
     access_token_value = jwt_manager.create_access_token(data=token_data)
 
     return TokenRefreshResponseSchema(access_token=access_token_value)

@@ -4,7 +4,6 @@ from typing import Any
 
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
-import base64
 import secrets
 
 

@@ -16,3 +16,15 @@ from src.schemas.accounts import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
 )
+
+__all__ = (
+    "UserRegistrationRequestSchema",
+    "UserRegistrationResponseSchema",
+    "ActivationRequestSchema",
+    "PasswordResetRequestSchema",
+    "PasswordResetCompleteRequestSchema",
+    "UserLoginResponseSchema",
+    "UserLoginRequestSchema",
+    "TokenRefreshRequestSchema",
+    "TokenRefreshResponseSchema",
+)
