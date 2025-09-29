@@ -67,5 +67,3 @@ class TokenRefreshResponseSchema(BaseModel):
 
 class MessageResponseSchema(BaseModel):
     message: str
-
-

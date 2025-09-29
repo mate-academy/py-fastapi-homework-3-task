@@ -10,13 +10,14 @@ from schemas.accounts import (
     UserLoginRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    TokenRefreshResponseSchema,
 )
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
+from passlib.context import CryptContext
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -28,7 +29,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
-from exceptions import BaseSecurityError,TokenExpiredError, InvalidTokenError
+from exceptions import BaseSecurityError, TokenExpiredError, InvalidTokenError
 from security.interfaces import JWTAuthManagerInterface
 
 
@@ -36,6 +37,13 @@ def ensure_utc(dt: datetime) -> datetime:
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
 
 
 router = APIRouter()
