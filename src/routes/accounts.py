@@ -1,23 +1,19 @@
 from datetime import datetime, timezone, timedelta
-from fastapi import Request
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
     get_db,
     UserModel,
-    UserGroupModel,
     UserGroupEnum,
     ActivationTokenModel,
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 
 from schemas.accounts import (
@@ -31,7 +27,7 @@ from schemas.accounts import (
     UserLoginRequestSchema
 )
 
-from src.schemas.accounts import TokenRefreshResponseSchema, TokenRefreshRequestSchema
+from schemas.accounts import TokenRefreshResponseSchema, TokenRefreshRequestSchema
 
 router = APIRouter()
 
@@ -56,10 +52,10 @@ async def register(
         )
 
     try:
-        new_user = UserModel.create(
+        new_user = UserModel.create(   # method UserModel.create has hashing password
             email=data.email,
             raw_password=data.password,
-            group_id=1
+            group_id=UserGroupEnum.USER
         )
         db.add(new_user)
         await db.commit()
@@ -173,8 +169,9 @@ async def reset_password_complete(
     token_record = result.scalar_one_or_none()
 
     if not token_record or token_record.token != data.token:
-        await db.delete(token_record)
-        await db.commit()
+        if token_record:
+            await db.delete(token_record)
+            await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     expires_at = token_record.expires_at
@@ -187,7 +184,7 @@ async def reset_password_complete(
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
-        user.password = data.password
+        user.password = data.password  # We hash the password via the UserModel setter
         await db.delete(token_record)
         await db.commit()
         return {"message": "Password reset successfully."}
