@@ -14,7 +14,7 @@ from database import (
     UserGroupEnum,
     ActivationTokenModel,
     PasswordResetTokenModel,
-    RefreshTokenModel
+    RefreshTokenModel,
 )
 from exceptions import BaseSecurityError, TokenExpiredError, InvalidTokenError
 from schemas import (
@@ -27,9 +27,10 @@ from schemas import (
     UserLoginRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    TokenRefreshResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 
 router = APIRouter()
 
@@ -46,27 +47,24 @@ async def _commit_or_raise(session: AsyncSession, detail: str) -> None:
         await session.commit()
     except SQLAlchemyError:
         await session.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=detail
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
 
 
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 async def register_user(
     registration_data: UserRegistrationRequestSchema,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> UserRegistrationResponseSchema:
     existing_stmt = select(UserModel).where(UserModel.email == registration_data.email)
     existing_result = await db.execute(existing_stmt)
     if existing_result.scalars().first() is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"A user with this email {registration_data.email} already exists."
+            detail=f"A user with this email {registration_data.email} already exists.",
         )
 
     group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
@@ -75,13 +73,13 @@ async def register_user(
     if user_group is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Default user group is not configured."
+            detail="Default user group is not configured.",
         )
 
     user = UserModel.create(
         email=registration_data.email,
         raw_password=registration_data.password,
-        group_id=user_group.id
+        group_id=user_group.id,
     )
     db.add(user)
     await db.flush()
@@ -95,13 +93,10 @@ async def register_user(
     return UserRegistrationResponseSchema.model_validate(user)
 
 
-@router.post(
-    "/activate/",
-    response_model=MessageResponseSchema
-)
+@router.post("/activate/", response_model=MessageResponseSchema)
 async def activate_user(
     activation_data: UserActivationRequestSchema,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> MessageResponseSchema:
     stmt = (
         select(UserModel)
@@ -129,13 +124,10 @@ async def activate_user(
     return MessageResponseSchema(message="User account activated successfully.")
 
 
-@router.post(
-    "/password-reset/request/",
-    response_model=MessageResponseSchema
-)
+@router.post("/password-reset/request/", response_model=MessageResponseSchema)
 async def request_password_reset(
     reset_request: PasswordResetRequestSchema,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ) -> MessageResponseSchema:
     stmt = (
         select(UserModel)
@@ -187,10 +179,18 @@ async def reset_password(
         await _commit_or_raise(db, detail="An error occurred while resetting the password.")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
 
-    user.password = reset_data.password
+    if hasattr(user, "set_password"):
+        user.set_password(reset_data.password)
+    elif (hasattr(type(user), "password")
+          and isinstance(getattr(type(user), "password"), property)
+          and getattr(type(user).password, "fset")):
+        user.password = reset_data.password
+    else:
+        user.hashed_password = hash_password(reset_data.password)
 
     await db.delete(token)
     await _commit_or_raise(db, detail="An error occurred while resetting the password.")
+    await db.refresh(user)
 
     return MessageResponseSchema(message="Password reset successfully.")
 
@@ -198,13 +198,13 @@ async def reset_password(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
 async def login_user(
     login_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-    settings: BaseAppSettings = Depends(get_settings)
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> UserLoginResponseSchema:
     stmt = select(UserModel).where(UserModel.email == login_data.email)
     result = await db.execute(stmt)
@@ -219,7 +219,7 @@ async def login_user(
     access_token = jwt_manager.create_access_token({"user_id": user.id})
     refresh_token = jwt_manager.create_refresh_token(
         {"user_id": user.id},
-        expires_delta=timedelta(days=settings.LOGIN_TIME_DAYS)
+        expires_delta=timedelta(days=settings.LOGIN_TIME_DAYS),
     )
 
     await db.execute(delete(RefreshTokenModel).where(RefreshTokenModel.user_id == user.id))
@@ -227,7 +227,7 @@ async def login_user(
     refresh_token_record = RefreshTokenModel.create(
         user_id=user.id,
         days_valid=settings.LOGIN_TIME_DAYS,
-        token=refresh_token
+        token=refresh_token,
     )
     db.add(refresh_token_record)
 
@@ -236,18 +236,15 @@ async def login_user(
     return UserLoginResponseSchema(
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer"
+        token_type="bearer",
     )
 
 
-@router.post(
-    "/refresh/",
-    response_model=TokenRefreshResponseSchema
-)
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
     refresh_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ) -> TokenRefreshResponseSchema:
     try:
         token_payload = jwt_manager.decode_refresh_token(refresh_data.refresh_token)
