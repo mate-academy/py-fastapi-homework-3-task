@@ -33,8 +33,6 @@ from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
 
-# Write your code here
-
 
 def _is_token_expired(expires_at: datetime) -> bool:
     expiration = expires_at
@@ -48,7 +46,10 @@ async def _commit_or_raise(session: AsyncSession, detail: str) -> None:
         await session.commit()
     except SQLAlchemyError:
         await session.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=detail
+        )
 
 
 @router.post(
@@ -187,8 +188,8 @@ async def reset_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
 
     user.password = reset_data.password
-    await db.delete(token)
 
+    await db.delete(token)
     await _commit_or_raise(db, detail="An error occurred while resetting the password.")
 
     return MessageResponseSchema(message="Password reset successfully.")
@@ -232,7 +233,11 @@ async def login_user(
 
     await _commit_or_raise(db, detail="An error occurred while processing the request.")
 
-    return UserLoginResponseSchema(access_token=access_token, refresh_token=refresh_token)
+    return UserLoginResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
+    )
 
 
 @router.post(
