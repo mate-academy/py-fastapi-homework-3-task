@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict, Field
 
 from database import accounts_validators
 
@@ -49,3 +49,21 @@ class PasswordResetRequestSchema(EmailSchema):
 class PasswordResetCompleteRequestSchema(EmailSchema):
     token: str
     password: str
+
+
+class UserLoginRequestSchema(UserRegistrationRequestSchema):
+    password: str
+
+
+class UserLoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = Field("bearer")
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    refresh_token: str
+
+
+class TokenRefreshResponseSchema(BaseModel):
+    access_token: str
