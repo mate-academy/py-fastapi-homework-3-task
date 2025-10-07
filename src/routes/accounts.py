@@ -20,11 +20,14 @@ from database import (
 from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 from security.activation_token_manager import activation_token_manager
+from security.password_reset_token_manager import password_reset_token_manager
 from schemas import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     MessageResponseSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema,
 )
 
 router = APIRouter()
@@ -90,12 +93,12 @@ async def create_user(
     "/activate/",
 )
 async def activate_user(
-    activation_data: UserActivationRequestSchema,
+    user_data: UserActivationRequestSchema,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MessageResponseSchema:
     user = await db.scalar(
         select(UserModel)
-        .where(UserModel.email == activation_data.email)
+        .where(UserModel.email == user_data.email)
     )
     if not user:
         raise HTTPException(
@@ -111,10 +114,10 @@ async def activate_user(
 
     activation_token = await db.scalar(
         select(ActivationTokenModel)
-        .where(ActivationTokenModel.token == activation_data.token)
+        .where(ActivationTokenModel.token == user_data.token)
     )
     if not activation_token_manager.verify_token(
-        token=activation_data.token,
+        token=user_data.token,
         token_obj=activation_token,
         user_id=user.id,
     ):
@@ -136,3 +139,93 @@ async def activate_user(
         )
 
     return MessageResponseSchema(message="User account activated successfully.")
+
+
+@router.post(
+    "/password-reset/request/",
+)
+async def password_reset(
+    user_data: PasswordResetRequestSchema,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MessageResponseSchema:
+    answer = MessageResponseSchema(
+        message="If you are registered, you will receive an email with instructions."
+    )
+    user = await db.scalar(
+        select(UserModel)
+        .where(UserModel.email == user_data.email)
+    )
+    if not user or not user.is_active:
+        return answer
+
+    tokens = await db.scalars(
+        select(PasswordResetTokenModel)
+        .where(PasswordResetTokenModel.user_id == user.id)
+    )
+
+    if tokens:
+        for token in tokens:
+            await db.delete(token)
+
+    token, expires_at = password_reset_token_manager.create_token()
+    expires_at = cast(datetime, expires_at).replace(tzinfo=timezone.utc)
+    token = PasswordResetTokenModel(
+        user=user,
+        token=token,
+        expires_at=expires_at,
+    )
+
+    db.add(token)
+    await db.commit()
+    return answer
+
+
+@router.post(
+    "/reset-password/complete/",
+)
+async def password_reset_completion(
+    user_data: PasswordResetCompleteRequestSchema,
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> MessageResponseSchema:
+    user = await db.scalar(
+        select(UserModel)
+        .where(UserModel.email == user_data.email)
+        .options(
+            joinedload(UserModel.password_reset_token)
+        )
+    )
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token.",
+        )
+
+    token = user.password_reset_token
+
+    if not password_reset_token_manager.verify_token(
+        token=user_data.token,
+        token_obj=token,
+        user_id=user.id,
+    ):
+        if token:
+            await db.delete(token)
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token.",
+        )
+
+    user.password = user_data.password
+
+    db.add(user)
+    try:
+        await db.delete(token)
+        await db.commit()
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password.",
+        )
+
+    return MessageResponseSchema(message="Password reset successfully.")

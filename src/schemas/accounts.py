@@ -38,6 +38,14 @@ class UserActivationRequestSchema(EmailSchema):
     token: str
 
 
-
 class MessageResponseSchema(BaseModel):
     message: str
+
+
+class PasswordResetRequestSchema(EmailSchema):
+    pass
+
+
+class PasswordResetCompleteRequestSchema(EmailSchema):
+    token: str
+    password: str
