@@ -97,7 +97,7 @@ class MovieFullSchema(BaseModel):
 
 
 # ---------- List response with pagination ----------
-class MoviesListResponse(BaseModel):
+class MovieListResponseSchema(BaseModel):
     movies: List[MovieBriefSchema]
     prev_page: Optional[str]
     next_page: Optional[str]
@@ -110,6 +110,10 @@ class MoviesListResponse(BaseModel):
     }
 
 
+# Backward-compat alias if some modules import the old name
+MoviesListResponse = MovieListResponseSchema
+
+
 # ---------- Create / Update payloads ----------
 class MovieCreateSchema(BaseModel):
     name: str
@@ -119,7 +123,6 @@ class MovieCreateSchema(BaseModel):
     status: MovieStatusEnum
     budget: float = Field(..., ge=0)
     revenue: float = Field(..., ge=0)
-    # ISO код країни — дозволимо 2-3 великі літери, нормалізуємо до UPPER
     country: str
     genres: List[str] = Field(default_factory=list)
     actors: List[str] = Field(default_factory=list)

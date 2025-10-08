@@ -1,18 +1,15 @@
-# src/schemas/__init__.py
-
-# ---- Movies ----
 from .movies import (
     MovieBriefSchema,
     MovieFullSchema,
-    MoviesListResponse,
+    MovieListResponseSchema,
+    MoviesListResponse,  # alias for compatibility
     MovieCreateSchema,
     MovieUpdateSchema,
 )
 
-# ---- Accounts ----
 from .accounts import (
     UserRegistrationRequestSchema,
-    UserResponseSchema,                     # фактична відповідь на реєстрацію
+    UserResponseSchema,
     ActivateAccountRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
@@ -23,21 +20,17 @@ from .accounts import (
     MessageResponse,
 )
 
-# Алiас для сумісності з імпортами у тестах:
-# Деякі місця (або попередній __init__) очікують UserRegistrationResponseSchema.
-UserRegistrationResponseSchema = UserResponseSchema  # type: ignore
-
 __all__ = [
-    # Movies
+    # movies
     "MovieBriefSchema",
     "MovieFullSchema",
+    "MovieListResponseSchema",
     "MoviesListResponse",
     "MovieCreateSchema",
     "MovieUpdateSchema",
-    # Accounts
+    # accounts
     "UserRegistrationRequestSchema",
     "UserResponseSchema",
-    "UserRegistrationResponseSchema",  # аліас
     "ActivateAccountRequestSchema",
     "PasswordResetRequestSchema",
     "PasswordResetCompleteRequestSchema",
