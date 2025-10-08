@@ -121,7 +121,7 @@ async def activate_user(
 
 @router.post(
     path="/login/",
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     response_model=UserLoginResponseSchema
 )
 async def user_login(
@@ -240,7 +240,7 @@ async def reset_password(
 @router.post(
     "/refresh/",
     response_model=TokenRefreshResponseSchema,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_201_CREATED
 )
 async def refresh(
     request: TokenRefreshRequestSchema,
