@@ -1,4 +1,4 @@
-from .settings import get_settings, BaseAppSettings  # експорт налаштувань
-from .dependencies import get_jwt_auth_manager      # експорт DI для JWT
+from .settings import BaseAppSettings
+from .dependencies import get_settings, get_jwt_auth_manager
 
-__all__ = ["get_settings", "BaseAppSettings", "get_jwt_auth_manager"]
+__all__ = ["BaseAppSettings", "get_settings", "get_jwt_auth_manager"]
