@@ -56,7 +56,6 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     password: str
 
 
-
 class LoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
