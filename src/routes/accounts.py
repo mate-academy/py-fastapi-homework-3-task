@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
-from typing import cast, Annotated
+from datetime import datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -71,13 +71,7 @@ async def create_user(
         group_id=user_group.id
     )
 
-    token, expires_at = activation_token_manager.create_token()
-    expires_at = cast(datetime, expires_at).replace(tzinfo=timezone.utc)
-    activation_token = ActivationTokenModel(
-        user=user,
-        token=token,
-        expires_at=expires_at,
-    )
+    activation_token = ActivationTokenModel(user=user)
 
     db.add(user)
     db.add(activation_token)
@@ -171,13 +165,7 @@ async def password_reset(
         for token in tokens:
             await db.delete(token)
 
-    token, expires_at = password_reset_token_manager.create_token()
-    expires_at = cast(datetime, expires_at).replace(tzinfo=timezone.utc)
-    token = PasswordResetTokenModel(
-        user=user,
-        token=token,
-        expires_at=expires_at,
-    )
+    token = PasswordResetTokenModel(user=user)
 
     db.add(token)
     await db.commit()
@@ -243,6 +231,7 @@ async def login_user(
     user_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
 ) -> UserLoginResponseSchema:
     user = await db.scalar(select(UserModel).where(UserModel.email == user_data.email))
 
@@ -258,11 +247,16 @@ async def login_user(
             detail="User account is not activated.",
         )
 
-    access_token = jwt_manager.create_access_token({"user_id": user.id})
-    refresh_token = jwt_manager.create_refresh_token({"user_id": user.id})
+    access_token = jwt_manager.create_access_token(
+        data={"user_id": user.id},
+    )
+    refresh_token = jwt_manager.create_refresh_token(
+        data={"user_id": user.id},
+        expires_delta=timedelta(days=settings.LOGIN_TIME_DAYS),
+    )
 
     try:
-        db.add(RefreshTokenModel(user_id=user.id, token=refresh_token))
+        db.add(RefreshTokenModel.create(user_id=user.id, token=refresh_token, days_valid=settings.LOGIN_TIME_DAYS))
         await db.commit()
     except SQLAlchemyError:
         await db.rollback()

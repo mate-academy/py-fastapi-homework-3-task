@@ -39,7 +39,12 @@ class ActivationTokenManager:
         if token_obj.token != token:
             raise InvalidTokenError("Invalid activation token.")
 
-        if token_obj.expires_at < datetime.now(timezone.utc):
+        if cast(
+            datetime,
+            token_obj.expires_at
+        ).replace(
+            tzinfo=timezone.utc
+        ) < datetime.now(timezone.utc):
             raise TokenExpiredError("Activation token expired.")
 
 

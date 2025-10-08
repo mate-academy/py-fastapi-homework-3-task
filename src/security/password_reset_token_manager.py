@@ -39,7 +39,12 @@ class PasswordResetTokenManager:
         if token_obj.token != token:
             raise InvalidTokenError("Invalid password reset token.")
 
-        if token_obj.expires_at < datetime.now(timezone.utc):
+        if cast(
+            datetime,
+            token_obj.expires_at
+        ).replace(
+            tzinfo=timezone.utc
+        ) < datetime.now(timezone.utc):
             raise TokenExpiredError("Password reset token expired.")
 
 
