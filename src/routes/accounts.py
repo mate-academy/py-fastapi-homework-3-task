@@ -221,7 +221,7 @@ async def password_reset(
 ):
     user = await db.scalar(
         select(UserModel).where(
-            UserModel.email == request_data.email, UserModel.is_active is True
+            UserModel.email == request_data.email, UserModel.is_active
         )
     )
 
@@ -283,7 +283,7 @@ async def password_reset_complete(
     try:
         user = await db.scalar(
             select(UserModel).where(
-                UserModel.email == request_data.email, UserModel.is_active is True
+                UserModel.email == request_data.email, UserModel.is_active
             )
         )
 
