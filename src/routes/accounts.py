@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
+from jose import JWTError
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,7 +134,7 @@ async def request_password_reset(
         token = PasswordResetTokenModel(
             user_id=user.id,
             token=generate_secure_token(),
-            expires_at=datetime.now() + timedelta(hours=1)
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1)
         )
         db.add(token)
         await db.commit()
@@ -268,7 +269,7 @@ async def refresh_access_token(
     try:
         token_data = jwt_manager.decode_refresh_token(refresh_token)
         user_id = token_data.get("user_id")
-    except Exception:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token has expired."
