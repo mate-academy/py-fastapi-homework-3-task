@@ -18,16 +18,16 @@ from database.models.accounts import (
     RefreshTokenModel,
 )
 from schemas.accounts import (
-    UserRegistrationRequestSchema,
-    UserResponseSchema,
-    ActivateAccountRequestSchema,
-    PasswordResetRequestSchema,
-    PasswordResetCompleteRequestSchema,
-    LoginRequestSchema,
-    LoginResponseSchema,
-    RefreshRequestSchema,
-    RefreshResponseSchema,
-    MessageResponse,
+        UserRegistrationRequestSchema,
+        UserResponseSchema,
+        ActivateAccountRequestSchema,
+        PasswordResetRequestSchema,
+        PasswordResetCompleteRequestSchema,
+        LoginRequestSchema,
+        LoginResponseSchema,
+        RefreshRequestSchema,
+        RefreshResponseSchema,
+        MessageResponse,
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password, verify_password
@@ -49,7 +49,7 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # Уже існує?
+    # Check if email already exists
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -57,7 +57,7 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # Група за замовчуванням (USER)
+    # Default group USER
     res_group = await db.execute(
         select(UserGroupModel).where(UserGroupModel.name == "USER")
     )
@@ -71,8 +71,9 @@ async def register_user(
             group=default_group,
         )
         db.add(user)
-        await db.flush()  # щоб мати user.id
+        await db.flush()  # to get user.id
 
+        # Activation token (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -133,9 +134,11 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
+        # Invalidate existing tokens
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
+        # Create a new token (2h)
         reset_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -144,6 +147,7 @@ async def request_password_reset(
         db.add(reset_token)
         await db.commit()
 
+    # Always return same message
     return MessageResponse(message="If you are registered, you will receive an email with instructions.")
 
 
@@ -202,7 +206,7 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # чітко задаємо строк дії (7 днів), але використовуємо фабрику моделі
+        # Persist refresh (7 days)
         expires_at = _utcnow() + timedelta(days=7)
         await RefreshTokenModel.create(
             db,
@@ -215,7 +219,11 @@ async def login(
         await db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
-    return LoginResponseSchema(access_token=access_token, refresh_token=refresh_token)
+    return LoginResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+    )
 
 
 @router.post("/refresh/", response_model=RefreshResponseSchema)
