@@ -18,6 +18,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
+from exceptions import TokenExpiredError
 from schemas import (
     UserRegistrationResponseSchema, UserRegistrationRequestSchema, DetailResponseSchema,
     UserActivationRequestSchema, MessageResponseSchema,
@@ -269,7 +270,7 @@ async def refresh_access_token(
     try:
         token_data = jwt_manager.decode_refresh_token(refresh_token)
         user_id = token_data.get("user_id")
-    except JWTError:
+    except TokenExpiredError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token has expired."
