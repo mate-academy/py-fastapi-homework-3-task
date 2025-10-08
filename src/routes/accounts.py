@@ -1,10 +1,9 @@
 from datetime import datetime, timezone, timedelta
-from sqlite3 import IntegrityError
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
@@ -63,7 +62,6 @@ async def register_user(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User group not found."
             )
-        print(user_data.password)
         db_user = UserModel.create(
             email=user_data.email,
             raw_password=user_data.password,
@@ -172,7 +170,7 @@ async def reset_password_complete(
             detail="Invalid email or token."
         )
 
-    expires_at = token_obj.expires_at
+    expires_at = cast(datetime, token_obj.expires_at).replace(tzinfo=timezone.utc)
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
@@ -253,7 +251,7 @@ async def user_login(
 @router.post(
     "/refresh/",
     response_model=TokenRefreshResponseSchema,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
 )
 async def refresh_access_token(
     payload: TokenRefreshRequestSchema,
@@ -292,6 +290,12 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
+        )
+
+    if user.id != refresh_token_obj.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found."
         )
 
     access_token = jwt_manager.create_access_token(
