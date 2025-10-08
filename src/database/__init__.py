@@ -1,3 +1,5 @@
+# src/database/__init__.py
+
 # 1) База
 from database.models.base import Base
 
@@ -19,6 +21,9 @@ from database.models.movies import (
     ActorModel,
     CountryModel,
     LanguageModel,
+    MoviesGenresModel,
+    ActorsMoviesModel,
+    MoviesLanguagesModel,
 )
 
 # 4) Сесія / утиліти SQLite (для тестів)
@@ -57,6 +62,10 @@ __all__ = [
     "ActorModel",
     "CountryModel",
     "LanguageModel",
+    # таблиці-асоціації
+    "MoviesGenresModel",
+    "ActorsMoviesModel",
+    "MoviesLanguagesModel",
     # сесія / ініт
     "get_db",
     "get_sqlite_db_contextmanager",
