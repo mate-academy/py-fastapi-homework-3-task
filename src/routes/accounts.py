@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
+from security.passwords import hash_password
 from database import (
     get_db,
     UserModel,
@@ -184,7 +185,7 @@ async def reset_password_complete(
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
-        user.password = reset_data.password
+        user._hashed_password = hash_password(reset_data.password)
         await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.id == token_record.id))
         await db.commit()
     except SQLAlchemyError:
