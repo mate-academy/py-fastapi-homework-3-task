@@ -56,7 +56,6 @@ async def register_user(
         )
 
     try:
-        # Ensure default user group exists (tests seed it)
         group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
         group_result = await db.execute(group_stmt)
         user_group = group_result.scalars().first()
@@ -86,7 +85,6 @@ async def activate_user(
         activation_data: UserActivationRequestSchema,
         db: AsyncSession = Depends(get_db),
 ):
-    # Find the user by email
     user_stmt = (
         select(UserModel)
         .options(joinedload(UserModel.activation_token))
@@ -96,13 +94,11 @@ async def activate_user(
     user = user_result.scalars().first()
 
     if not user:
-        # Generic invalid token response
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     if user.is_active:
         raise HTTPException(status_code=400, detail="User account is already active.")
 
-    # Fetch token record by token value
     token_stmt = select(ActivationTokenModel).where(ActivationTokenModel.token == activation_data.token)
     token_result = await db.execute(token_stmt)
     token_record = token_result.scalars().first()
@@ -132,7 +128,6 @@ async def request_password_reset_token(
         reset_request: PasswordResetRequestSchema,
         db: AsyncSession = Depends(get_db),
 ):
-    # Always return generic message
     generic_message = {"message": "If you are registered, you will receive an email with instructions."}
 
     user_stmt = select(UserModel).where(UserModel.email == reset_request.email)
@@ -142,7 +137,6 @@ async def request_password_reset_token(
     if not user or not user.is_active:
         return MessageResponseSchema(**generic_message)
 
-    # Optionally remove old token for the user to keep one active token
     await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
 
     token_record = PasswordResetTokenModel(user_id=cast(int, user.id))
@@ -164,7 +158,10 @@ async def reset_password_complete(
     user_result = await db.execute(user_stmt)
     user = user_result.scalars().first()
 
-    if not user:
+    if not user or not user.is_active:
+        if user:
+            await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
+            await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     token_stmt = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
@@ -252,7 +249,6 @@ async def refresh_access_token(
     except BaseSecurityError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # Ensure token exists in DB
     token_stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == refresh_data.refresh_token)
     token_result = await db.execute(token_stmt)
     token_record = token_result.scalars().first()
@@ -260,6 +256,8 @@ async def refresh_access_token(
         raise HTTPException(status_code=401, detail="Refresh token not found.")
 
     user_id = token_data.get("user_id")
+    if token_record.user_id != user_id:
+        raise HTTPException(status_code=401, detail="Refresh token not found.")
     user_stmt = select(UserModel).where(UserModel.id == user_id)
     user_result = await db.execute(user_stmt)
     user = user_result.scalars().first()
