@@ -8,6 +8,7 @@ from sqlalchemy import Enum as SQLAlchemyEnum
 
 from .base import Base
 
+
 class MovieStatusEnum(str, Enum):
     RELEASED = "Released"
     POST_PRODUCTION = "Post Production"
