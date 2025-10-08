@@ -14,7 +14,8 @@ from database import (
 from schemas import (
     MovieListResponseSchema,
     MovieListItemSchema,
-    MovieDetailSchema
+    MovieDetailSchema,
+    UserRegistrationResponseSchema
 )
 from schemas.movies import MovieCreateSchema, MovieUpdateSchema
 
@@ -429,3 +430,8 @@ async def update_movie(
         raise HTTPException(status_code=400, detail="Invalid input data.")
 
     return {"detail": "Movie updated successfully."}
+
+
+@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=201)
+async def register_user(db: AsyncSession = Depends(get_db)):
+    pass
