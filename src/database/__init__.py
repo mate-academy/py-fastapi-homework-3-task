@@ -1,7 +1,7 @@
-# 1) Base
+# 1) База
 from database.models.base import Base
 
-# 2) Account models
+# 2) Моделі (акаунти)
 from database.models.accounts import (
     UserGroupModel,
     UserModel,
@@ -9,9 +9,10 @@ from database.models.accounts import (
     ActivationTokenModel,
     PasswordResetTokenModel,
     RefreshTokenModel,
+    UserGroupEnum,
 )
 
-# 3) Movie models
+# 3) Моделі (фільми)
 from database.models.movies import (
     MovieModel,
     GenreModel,
@@ -20,46 +21,50 @@ from database.models.movies import (
     LanguageModel,
 )
 
-# 4) SQLite session / utils (tests)
+# 4) Сесія / утиліти SQLite (для тестів)
 from database.session_sqlite import (
     get_db,
     get_sqlite_db_contextmanager,
     init_db,
     close_db,
-    reset_database,   # actual function
+    reset_database,  # фактична функція у session_sqlite.py
 )
 
-# Back-compat alias (some tests/imports may expect this name)
+# Аліаси для сумісності з тестами
 reset_sqlite_database = reset_database
+get_db_contextmanager = get_sqlite_db_contextmanager
 
-# 5) Seeder (optional)
+# 5) Seeder (опціонально)
 try:
     from database.populate import CSVDatabaseSeeder  # noqa: F401
 except Exception:
     CSVDatabaseSeeder = None
 
 __all__ = [
+    # база
     "Base",
-    # accounts
+    # акаунти
     "UserGroupModel",
     "UserModel",
     "UserProfileModel",
     "ActivationTokenModel",
     "PasswordResetTokenModel",
     "RefreshTokenModel",
-    # movies
+    "UserGroupEnum",
+    # фільми
     "MovieModel",
     "GenreModel",
     "ActorModel",
     "CountryModel",
     "LanguageModel",
-    # session / init
+    # сесія / ініт
     "get_db",
     "get_sqlite_db_contextmanager",
+    "get_db_contextmanager",
     "init_db",
     "close_db",
     "reset_database",
     "reset_sqlite_database",
-    # seeder
+    # сидер
     "CSVDatabaseSeeder",
 ]
