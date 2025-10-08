@@ -1,10 +1,59 @@
-from passlib.context import CryptContext
+import os
+from datetime import datetime, timedelta
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    bcrypt__rounds=14,
-    deprecated="auto"
-)
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy import select
+
+from security.token_manager import JWTAuthManager
+
+pwd_context = CryptContext(schemes=["bcrypt"], bcrypt__rounds=14, deprecated="auto")
+
+
+SECRET_KEY = "mysecretkey"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+
+
+async def remove_token(db, user) -> str:
+    from database import PasswordResetTokenModel
+
+    user_token_to_remove = await db.execute(
+        select(PasswordResetTokenModel).where(
+            PasswordResetTokenModel.user_id == user.id
+        )
+    )
+    tokens_to_remove = user_token_to_remove.scalars().all()
+    for token in tokens_to_remove:
+        await db.delete(token)
+    await db.commit()
+    return "Done"
+
+
+def get_jwt_manager() -> JWTAuthManager:
+    secret_access = os.getenv("SECRET_KEY_ACCESS") or "SECRET_KEY_ACCESS"
+    secret_refresh = os.getenv("SECRET_KEY_REFRESH") or "SECRET_KEY_REFRESH"
+    algorithm = os.getenv("JWT_SIGNING_ALGORITHM") or "HS256"
+    return JWTAuthManager(secret_access, secret_refresh, algorithm)
 
 
 def hash_password(password: str) -> str:
