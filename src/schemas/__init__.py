@@ -1,8 +1,10 @@
 from .movies import (
     MovieBriefSchema,
     MovieFullSchema,
+    MovieDetailSchema,       # alias to MovieFullSchema
+    MovieListItemSchema,     # alias to MovieBriefSchema
     MovieListResponseSchema,
-    MoviesListResponse,  # alias for compatibility
+    MoviesListResponse,      # legacy alias
     MovieCreateSchema,
     MovieUpdateSchema,
 )
@@ -24,6 +26,8 @@ __all__ = [
     # movies
     "MovieBriefSchema",
     "MovieFullSchema",
+    "MovieDetailSchema",
+    "MovieListItemSchema",
     "MovieListResponseSchema",
     "MoviesListResponse",
     "MovieCreateSchema",

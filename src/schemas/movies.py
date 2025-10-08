@@ -19,7 +19,6 @@ from schemas.examples.movies import (
 )
 
 
-# ---------- Atomic schemas ----------
 class LanguageSchema(BaseModel):
     id: int
     name: str
@@ -61,7 +60,7 @@ class ActorSchema(BaseModel):
     }
 
 
-# ---------- List item / brief ----------
+# ---------- Brief / List item ----------
 class MovieBriefSchema(BaseModel):
     id: int
     name: str
@@ -73,6 +72,9 @@ class MovieBriefSchema(BaseModel):
         "from_attributes": True,
         "json_schema_extra": {"examples": [movie_item_schema_example]},
     }
+
+
+MovieListItemSchema = MovieBriefSchema
 
 
 # ---------- Full movie ----------
@@ -96,6 +98,9 @@ class MovieFullSchema(BaseModel):
     }
 
 
+MovieDetailSchema = MovieFullSchema
+
+
 # ---------- List response with pagination ----------
 class MovieListResponseSchema(BaseModel):
     movies: List[MovieBriefSchema]
@@ -110,11 +115,10 @@ class MovieListResponseSchema(BaseModel):
     }
 
 
-# Backward-compat alias if some modules import the old name
 MoviesListResponse = MovieListResponseSchema
 
 
-# ---------- Create / Update payloads ----------
+# ---------- Create / Update ----------
 class MovieCreateSchema(BaseModel):
     name: str
     date: dt.date
