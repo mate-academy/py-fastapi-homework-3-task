@@ -72,11 +72,11 @@ async def activate_user(
     result = await db.execute(stmt)
     user = result.scalars().first()
 
-    if user.is_active:
-        raise HTTPException(status_code=400, detail="User account is already active.")
-
     if not user or not user.activation_token:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
+
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="User account is already active.")
 
     token = user.activation_token
 
@@ -159,6 +159,7 @@ async def reset_password_complete(
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     user.password = payload.password
+
     await db.delete(token_record)
     try:
         await db.commit()
@@ -205,6 +206,7 @@ async def login_user(
         db.add(refresh_token_entry)
         await db.commit()
     except SQLAlchemyError:
+        await db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
     return {
@@ -229,7 +231,7 @@ async def refresh_access_token(
     except TokenExpiredError:
         raise HTTPException(status_code=400, detail="Token has expired.")
     except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token.")
+        raise HTTPException(status_code=401, detail="Invalid or expired activation token.")
 
     user_id = token_data.get("user_id")
     if not user_id:
