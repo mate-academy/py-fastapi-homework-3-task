@@ -1,36 +1,65 @@
-import os
-
+# 1) Base
 from database.models.base import Base
+
+# 2) Account models
 from database.models.accounts import (
-    UserModel,
     UserGroupModel,
-    UserGroupEnum,
+    UserModel,
+    UserProfileModel,
     ActivationTokenModel,
     PasswordResetTokenModel,
-    RefreshTokenModel
+    RefreshTokenModel,
 )
+
+# 3) Movie models
 from database.models.movies import (
     MovieModel,
-    LanguageModel,
-    ActorModel,
     GenreModel,
+    ActorModel,
     CountryModel,
-    MoviesGenresModel,
-    ActorsMoviesModel,
-    MoviesLanguagesModel
+    LanguageModel,
 )
-from database.session_sqlite import reset_sqlite_database as reset_database
-from database.validators import accounts as accounts_validators
 
-environment = os.getenv("ENVIRONMENT", "developing")
+# 4) SQLite session / utils (tests)
+from database.session_sqlite import (
+    get_db,
+    get_sqlite_db_contextmanager,
+    init_db,
+    close_db,
+    reset_database,   # actual function
+)
 
-if environment == "testing":
-    from database.session_sqlite import (
-        get_sqlite_db_contextmanager as get_db_contextmanager,
-        get_sqlite_db as get_db
-    )
-else:
-    from database.session_postgresql import (
-        get_postgresql_db_contextmanager as get_db_contextmanager,
-        get_postgresql_db as get_db
-    )
+# Back-compat alias (some tests/imports may expect this name)
+reset_sqlite_database = reset_database
+
+# 5) Seeder (optional)
+try:
+    from database.populate import CSVDatabaseSeeder  # noqa: F401
+except Exception:
+    CSVDatabaseSeeder = None
+
+__all__ = [
+    "Base",
+    # accounts
+    "UserGroupModel",
+    "UserModel",
+    "UserProfileModel",
+    "ActivationTokenModel",
+    "PasswordResetTokenModel",
+    "RefreshTokenModel",
+    # movies
+    "MovieModel",
+    "GenreModel",
+    "ActorModel",
+    "CountryModel",
+    "LanguageModel",
+    # session / init
+    "get_db",
+    "get_sqlite_db_contextmanager",
+    "init_db",
+    "close_db",
+    "reset_database",
+    "reset_sqlite_database",
+    # seeder
+    "CSVDatabaseSeeder",
+]
