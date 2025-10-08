@@ -5,33 +5,33 @@ from datetime import datetime, timedelta, timezone
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import delete, select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config.dependencies import get_jwt_auth_manager
 from database.session_sqlite import get_db
 from database.models.accounts import (
+    UserModel,
+    UserGroupModel,
     ActivationTokenModel,
     PasswordResetTokenModel,
     RefreshTokenModel,
-    UserGroupEnum,
-    UserGroupModel,
-    UserModel,
 )
 from schemas.accounts import (
-    ActivateAccountRequestSchema,
-    LoginRequestSchema,
-    LoginResponseSchema,
-    MessageResponse,
-    PasswordResetCompleteRequestSchema,
-    PasswordResetRequestSchema,
-    RefreshRequestSchema,
-    RefreshResponseSchema,
     UserRegistrationRequestSchema,
     UserResponseSchema,
+    ActivateAccountRequestSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema,
+    LoginRequestSchema,
+    LoginResponseSchema,
+    RefreshRequestSchema,
+    RefreshResponseSchema,
+    MessageResponse,
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password, verify_password
+
 
 router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
@@ -49,7 +49,7 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # Already exists?
+    # Уже існує?
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -57,24 +57,22 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # Default USER group
+    # Група за замовчуванням (USER)
     res_group = await db.execute(
-        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+        select(UserGroupModel).where(UserGroupModel.name == "USER")
     )
     default_group = res_group.scalar_one_or_none()
 
     try:
         user = UserModel(
             email=user_data.email,
-            # Model field is _hashed_password
             _hashed_password=hash_password(user_data.password),
             is_active=False,
             group=default_group,
         )
         db.add(user)
-        await db.flush()  # get user.id
+        await db.flush()  # щоб мати user.id
 
-        # Create activation token (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -102,7 +100,6 @@ async def activate_account(
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
     if user is None:
-        # do not leak user existence
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     if user.is_active:
@@ -115,7 +112,6 @@ async def activate_account(
     if token_rec is None or token_rec.token != payload.token:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    # SQLite: make tz-aware for comparison
     expires = cast(datetime, token_rec.expires_at).replace(tzinfo=timezone.utc)
     if expires <= _utcnow():
         await db.delete(token_rec)
@@ -133,16 +129,13 @@ async def request_password_reset(
     payload: PasswordResetRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # Always respond with success; if user exists & active, (re)issue token
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
-        # Invalidate previous tokens
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
-        # Create a new one
         reset_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -191,7 +184,7 @@ async def complete_password_reset(
     return MessageResponse(message="Password reset successfully.")
 
 
-@router.post("/login/", response_model=LoginResponseSchema)
+@router.post("/login/", response_model=LoginResponseSchema, status_code=status.HTTP_201_CREATED)
 async def login(
     payload: LoginRequestSchema,
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
@@ -234,7 +227,6 @@ async def refresh_access_token(
         raise HTTPException(status_code=400, detail=str(e))
 
     user_id = cast(int, decoded.get("user_id"))
-
     res_rt = await db.execute(
         select(RefreshTokenModel).where(RefreshTokenModel.token == payload.refresh_token)
     )
