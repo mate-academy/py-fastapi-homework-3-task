@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from config import get_settings
 from config.dependencies import get_jwt_auth_manager
 from database.session_sqlite import get_db
 from database.models.accounts import (
@@ -198,15 +199,20 @@ async def login(
     if not user.is_active:
         raise HTTPException(status_code=403, detail="User account is not activated.")
 
+    # створення refresh уникає невідомої сигнатури .create(): пишемо вручну
     try:
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        await RefreshTokenModel.create(
-            db,
+        settings = get_settings()
+        expires_at = _utcnow() + timedelta(days=getattr(settings, "LOGIN_TIME_DAYS", 7))
+
+        rt = RefreshTokenModel(
             user_id=cast(int, user.id),
             token=refresh_token,
+            expires_at=expires_at,
         )
+        db.add(rt)
         await db.commit()
     except Exception:
         await db.rollback()

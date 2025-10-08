@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 # ---------- Common ----------
@@ -11,11 +11,18 @@ class MessageResponse(BaseModel):
 # ---------- Register ----------
 class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    # НЕ ставимо Field(min_length=8), щоб віддати наше кастомне повідомлення, а не стандартне Pydantic
+    password: str
 
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
+        # Порядок перевірок має значення для тестів:
+        # 1) довжина
+        # 2) наявність великої літери
+        # 3) наявність малої літери
+        # 4) наявність цифри
+        # 5) наявність спецсимвола
         if len(v) < 8:
             raise ValueError("Password must contain at least 8 characters.")
         if not any(c.isupper() for c in v):
@@ -50,12 +57,12 @@ class PasswordResetRequestSchema(BaseModel):
 class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
+    # Аналогічно — без Field(min_length=8), щоб повернути наше повідомлення
     password: str
 
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        # Ті самі правила що й при реєстрації
         if len(v) < 8:
             raise ValueError("Password must contain at least 8 characters.")
         if not any(c.isupper() for c in v):
