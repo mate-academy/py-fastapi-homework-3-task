@@ -198,6 +198,10 @@ class PasswordResetTokenModel(TokenBaseModel):
     def __repr__(self):
         return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
 
+    @classmethod
+    def create(cls, user_id: int, token: str, expires_at: datetime) -> "PasswordResetTokenModel":
+        return cls(user_id=user_id, token=token, expires_at=expires_at)
+
 
 class RefreshTokenModel(TokenBaseModel):
     __tablename__ = "refresh_tokens"

@@ -2,6 +2,8 @@ import re
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from database.validators.accounts import validate_password_strength
+
 
 class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
@@ -9,18 +11,8 @@ class UserRegistrationRequestSchema(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def validate_password_strength(cls, value: str) -> str:
-        if len(value) < 8:
-            raise ValueError("Password must contain at least 8 characters.")
-        if not any(c.isupper() for c in value):
-            raise ValueError("Password must contain at least one uppercase letter.")
-        if not any(c.islower() for c in value):
-            raise ValueError("Password must contain at least one lower letter.")
-        if not any(c.isdigit() for c in value):
-            raise ValueError("Password must contain at least one digit.")
-        if not re.search(r"[@$!%*?#&]", value):
-            raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
-        return value
+    def validate_password(cls, value):
+        return validate_password_strength(value)
 
 
 class UserResponseSchema(BaseModel):
@@ -68,4 +60,3 @@ class TokenRefreshRequestSchema(BaseModel):
 
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
-    token_type: str = "bearer"

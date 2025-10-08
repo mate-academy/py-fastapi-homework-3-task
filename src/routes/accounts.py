@@ -10,7 +10,7 @@ from datetime import timezone, datetime, timedelta
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import delete
 
-from config import get_jwt_auth_manager, BaseAppSettings, get_settings
+from config import get_jwt_auth_manager, BaseAppSettings, get_settings, settings
 from database import get_db
 from database.models.accounts import UserModel, UserGroupModel, ActivationTokenModel, UserGroupEnum, \
     PasswordResetTokenModel, RefreshTokenModel
@@ -22,6 +22,7 @@ from schemas.accounts import UserRegistrationRequestSchema, UserResponseSchema, 
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import verify_password
 from security.token_manager import JWTAuthManager
+from security.utils import generate_secure_token
 
 router = APIRouter()
 
@@ -63,12 +64,14 @@ async def register_user(user_data: UserRegistrationRequestSchema, db: AsyncSessi
     status_code=status.HTTP_200_OK
 )
 async def activate_user(
-        payload: UserActivationRequestSchema,
-        db: AsyncSession = Depends(get_db)
+    payload: UserActivationRequestSchema,
+    db: AsyncSession = Depends(get_db)
 ):
-    stmt = (select(UserModel)
-            .options(joinedload(UserModel.activation_token))
-            .where(UserModel.email == payload.email))
+    stmt = (
+        select(UserModel)
+        .options(joinedload(UserModel.activation_token))
+        .where(UserModel.email == payload.email)
+    )
     result = await db.execute(stmt)
     user = result.scalars().first()
 
@@ -78,57 +81,24 @@ async def activate_user(
     if user.is_active:
         raise HTTPException(status_code=400, detail="User account is already active.")
 
-    token = user.activation_token
+    token_record = user.activation_token
 
-    if token.token != payload.token:
-        raise HTTPException(status_code=400, detail="Invalid activation token.")
+    if token_record.token != payload.token:
+        await db.delete(token_record)
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    if token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        await db.delete(token_record)
+        await db.commit()
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     user.is_active = True
-    await db.delete(token)
+    await db.delete(token_record)
     await db.commit()
 
     return {"message": "User account activated successfully."}
-
-
-@router.post(
-    "/password-reset/request/",
-    status_code=status.HTTP_200_OK,
-    response_model=PasswordResetResponseSchema,
-)
-async def request_password_reset(
-    payload: PasswordResetRequestSchema,
-    db: AsyncSession = Depends(get_db),
-):
-    stmt = select(UserModel).where(UserModel.email == payload.email)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-
-    generic_response = PasswordResetResponseSchema(
-        message="If you are registered, you will receive an email with instructions."
-    )
-
-    if not user or not user.is_active:
-        return generic_response
-
-    await db.execute(
-        delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
-    )
-
-    token = secrets.token_urlsafe(32)
-    expires_at = datetime.now() + timedelta(hours=1)
-    reset_token = PasswordResetTokenModel(
-        user_id=user.id,
-        token=token,
-        expires_at=expires_at,
-    )
-
-    db.add(reset_token)
-    await db.commit()
-
-    return generic_response
 
 
 @router.post(
@@ -143,7 +113,7 @@ async def reset_password_complete(
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     stmt_tokens = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
@@ -152,21 +122,68 @@ async def reset_password_complete(
 
     token_record = next((t for t in tokens if t.token == payload.token), None)
 
-    if not token_record or token_record.expires_at < datetime.now():
+    if not token_record:
         for t in tokens:
             await db.delete(t)
         await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
+    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        await db.delete(token_record)
+        await db.commit()
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
+
     user.password = payload.password
 
-    await db.delete(token_record)
     try:
+        await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
+        await db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
 
     return {"message": "Password reset successfully."}
+
+
+@router.post(
+    "/password-reset/request/",
+    status_code=status.HTTP_200_OK
+)
+async def request_password_reset_token(
+    payload: PasswordResetRequestSchema,
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(UserModel).where(UserModel.email == payload.email)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        return {"message": "If you are registered, you will receive an email with instructions."}
+
+    stmt_tokens = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
+    result_tokens = await db.execute(stmt_tokens)
+    old_tokens = result_tokens.scalars().all()
+    for t in old_tokens:
+        await db.delete(t)
+
+    token = generate_secure_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+    reset_token = PasswordResetTokenModel.create(
+        user_id=cast(int, user.id),
+        token=token,
+        expires_at=expires_at
+    )
+
+    db.add(reset_token)
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create password reset token.")
+
+    return {"message": "If you are registered, you will receive an email with instructions."}
 
 
 @router.post(
@@ -231,7 +248,7 @@ async def refresh_access_token(
     except TokenExpiredError:
         raise HTTPException(status_code=400, detail="Token has expired.")
     except InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid or expired activation token.")
+        raise HTTPException(status_code=400, detail="Invalid refresh token.")
 
     user_id = token_data.get("user_id")
     if not user_id:
