@@ -8,6 +8,8 @@ from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
+from jose.exceptions import JWTError
+from exceptions.security import TokenExpiredError
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -20,7 +22,6 @@ from database import (
     RefreshTokenModel
 )
 from database.validators.accounts import validate_password_strength
-from exceptions import TokenExpiredError
 from schemas import (
     MessageResponseSchema,
     UserLoginResponseSchema,
@@ -235,9 +236,6 @@ async def reset_password(
             detail="An error occurred while resetting the password."
         )
 
-
-from jose.exceptions import JWTError
-from exceptions.security import TokenExpiredError
 
 @router.post(
     "/refresh/",
