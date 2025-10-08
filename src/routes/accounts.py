@@ -195,7 +195,7 @@ async def login_user(
     payload: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
-    settings: BaseAppSettings = Depends(get_settings)
+    app_settings: BaseAppSettings = Depends(get_settings)
 ):
     stmt = select(UserModel).where(UserModel.email == payload.email)
     result = await db.execute(stmt)
@@ -218,7 +218,7 @@ async def login_user(
 
     try:
         refresh_token_entry = RefreshTokenModel.create(
-            user_id=user.id, token=refresh_token, days_valid=settings.LOGIN_TIME_DAYS
+            user_id=user.id, token=refresh_token, days_valid=app_settings.LOGIN_TIME_DAYS
         )
         db.add(refresh_token_entry)
         await db.commit()
