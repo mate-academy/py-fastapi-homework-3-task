@@ -232,7 +232,6 @@ async def login(
     return LoginResponseSchema(access_token=access_token, refresh_token=refresh_token)
 
 
-
 @router.post("/refresh/", response_model=RefreshResponseSchema)
 async def refresh_access_token(
     payload: RefreshRequestSchema,
