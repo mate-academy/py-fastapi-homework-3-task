@@ -1,4 +1,3 @@
-from schemas.accounts import UserRegistrationRequestSchema
 from schemas.movies import (
     MovieDetailSchema,
     MovieListResponseSchema,
