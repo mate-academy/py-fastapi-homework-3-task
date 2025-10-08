@@ -1,4 +1,6 @@
-from datetime import date, datetime
+from __future__ import annotations
+
+import datetime as dt
 from typing import Optional, List
 
 from pydantic import BaseModel, Field, field_validator
@@ -13,21 +15,18 @@ from schemas.examples.movies import (
     movie_list_response_schema_example,
     movie_create_schema_example,
     movie_detail_schema_example,
-    movie_update_schema_example
+    movie_update_schema_example,
 )
 
 
+# ---------- Atomic schemas ----------
 class LanguageSchema(BaseModel):
     id: int
     name: str
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                language_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [language_schema_example]},
     }
 
 
@@ -38,11 +37,7 @@ class CountrySchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                country_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [country_schema_example]},
     }
 
 
@@ -52,11 +47,7 @@ class GenreSchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                genre_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [genre_schema_example]},
     }
 
 
@@ -66,72 +57,48 @@ class ActorSchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                actor_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [actor_schema_example]},
     }
 
 
-class MovieBaseSchema(BaseModel):
-    name: str = Field(..., max_length=255)
-    date: date
-    score: float = Field(..., ge=0, le=100)
-    overview: str
-    status: MovieStatusEnum
-    budget: float = Field(..., ge=0)
-    revenue: float = Field(..., ge=0)
-
-    model_config = {
-        "from_attributes": True
-    }
-
-    @field_validator("date")
-    @classmethod
-    def validate_date(cls, value):
-        current_year = datetime.now().year
-        if value.year > current_year + 1:
-            raise ValueError(f"The year in 'date' cannot be greater than {current_year + 1}.")
-        return value
-
-
-class MovieDetailSchema(MovieBaseSchema):
-    id: int
-    country: CountrySchema
-    genres: List[GenreSchema]
-    actors: List[ActorSchema]
-    languages: List[LanguageSchema]
-
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_detail_schema_example
-            ]
-        }
-    }
-
-
-class MovieListItemSchema(BaseModel):
+# ---------- List item / brief ----------
+class MovieBriefSchema(BaseModel):
     id: int
     name: str
-    date: date
+    date: dt.date
     score: float
     overview: str
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_item_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [movie_item_schema_example]},
     }
 
 
-class MovieListResponseSchema(BaseModel):
-    movies: List[MovieListItemSchema]
+# ---------- Full movie ----------
+class MovieFullSchema(BaseModel):
+    id: int
+    name: str
+    date: dt.date
+    score: float = Field(..., ge=0, le=100)
+    overview: str
+    status: MovieStatusEnum
+    budget: Optional[float] = Field(default=None, ge=0)
+    revenue: Optional[float] = Field(default=None, ge=0)
+    country: Optional[CountrySchema] = None
+    genres: List[GenreSchema] = Field(default_factory=list)
+    actors: List[ActorSchema] = Field(default_factory=list)
+    languages: List[LanguageSchema] = Field(default_factory=list)
+
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {"examples": [movie_detail_schema_example]},
+    }
+
+
+# ---------- List response with pagination ----------
+class MoviesListResponse(BaseModel):
+    movies: List[MovieBriefSchema]
     prev_page: Optional[str]
     next_page: Optional[str]
     total_pages: int
@@ -139,61 +106,67 @@ class MovieListResponseSchema(BaseModel):
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_list_response_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [movie_list_response_schema_example]},
     }
 
 
+# ---------- Create / Update payloads ----------
 class MovieCreateSchema(BaseModel):
     name: str
-    date: date
+    date: dt.date
     score: float = Field(..., ge=0, le=100)
     overview: str
     status: MovieStatusEnum
     budget: float = Field(..., ge=0)
     revenue: float = Field(..., ge=0)
+    # ISO код країни — дозволимо 2-3 великі літери, нормалізуємо до UPPER
     country: str
-    genres: List[str]
-    actors: List[str]
-    languages: List[str]
+    genres: List[str] = Field(default_factory=list)
+    actors: List[str] = Field(default_factory=list)
+    languages: List[str] = Field(default_factory=list)
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_create_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [movie_create_schema_example]},
     }
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: dt.date) -> dt.date:
+        if v > (dt.date.today() + dt.timedelta(days=365)):
+            raise ValueError("date must not be more than one year in the future")
+        return v
 
     @field_validator("country", mode="before")
     @classmethod
-    def normalize_country(cls, value: str) -> str:
-        return value.upper()
+    def normalize_country(cls, v: str) -> str:
+        return (v or "").upper()
 
     @field_validator("genres", "actors", "languages", mode="before")
     @classmethod
-    def normalize_list_fields(cls, value: List[str]) -> List[str]:
-        return [item.title() for item in value]
+    def normalize_list_fields(cls, v):
+        if v is None:
+            return []
+        return [str(item).strip().title() for item in v]
 
 
 class MovieUpdateSchema(BaseModel):
     name: Optional[str] = None
-    date: Optional[date] = None
-    score: Optional[float] = Field(None, ge=0, le=100)
+    date: Optional[dt.date] = None
+    score: Optional[float] = Field(default=None, ge=0, le=100)
     overview: Optional[str] = None
     status: Optional[MovieStatusEnum] = None
-    budget: Optional[float] = Field(None, ge=0)
-    revenue: Optional[float] = Field(None, ge=0)
+    budget: Optional[float] = Field(default=None, ge=0)
+    revenue: Optional[float] = Field(default=None, ge=0)
 
     model_config = {
         "from_attributes": True,
-        "json_schema_extra": {
-            "examples": [
-                movie_update_schema_example
-            ]
-        }
+        "json_schema_extra": {"examples": [movie_update_schema_example]},
     }
+
+    @field_validator("date")
+    @classmethod
+    def validate_date(cls, v: Optional[dt.date]) -> Optional[dt.date]:
+        if v and v > (dt.date.today() + dt.timedelta(days=365)):
+            raise ValueError("date must not be more than one year in the future")
+        return v
