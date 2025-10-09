@@ -9,8 +9,8 @@ class EmailSchema(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value):
-        validate_email(value.lower())
-        return value
+        validate_email(value)
+        return value.lower()
 
 
 class EmailPasswordSchema(EmailSchema):
@@ -18,7 +18,7 @@ class EmailPasswordSchema(EmailSchema):
 
     @field_validator("password")
     @classmethod
-    def validate_email(cls, value):
+    def validate_password(cls, value):
         validate_password_strength(value)
         return value
 
@@ -27,11 +27,11 @@ class MessageResponseSchema(BaseModel):
     message: str
 
 
-class UserCreateRequestSchema(EmailPasswordSchema):
+class UserRegistrationRequestSchema(EmailPasswordSchema):
     pass
 
 
-class UserCreateResponseSchema(BaseModel):
+class UserRegistrationResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

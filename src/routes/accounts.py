@@ -1,12 +1,9 @@
 from datetime import datetime, timezone, timedelta
-from typing import cast
 
-from dns.tsig import BadSignature
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -18,11 +15,11 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from exceptions import BaseSecurityError
+
 from schemas.accounts import (
-    UserCreateRequestSchema, UserCreateResponseSchema, MessageResponseSchema, UserActivateRequestSchema, EmailSchema,
-    CompletePasswordResetRequestSchema, UserLoginResponseSchema, UserLoginRequestSchema, TokenRefreshResponseSchema,
-    TokenRefreshRequestSchema
+    UserRegistrationRequestSchema, UserRegistrationResponseSchema, MessageResponseSchema, UserActivateRequestSchema,
+    EmailSchema, CompletePasswordResetRequestSchema, UserLoginResponseSchema, UserLoginRequestSchema,
+    TokenRefreshResponseSchema, TokenRefreshRequestSchema
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -31,13 +28,13 @@ router = APIRouter()
 
 @router.post(
     "/register/",
-    response_model=UserCreateResponseSchema,
+    response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user(
-        user_data: UserCreateRequestSchema,
+        user_data: UserRegistrationRequestSchema,
         db: AsyncSession = Depends(get_db),
-) -> UserCreateResponseSchema:
+) -> UserRegistrationResponseSchema:
     try:
         db_user = await db.scalar(
             select(UserModel).where(UserModel.email == user_data.email)
@@ -74,7 +71,7 @@ async def create_user(
             detail="An error occurred during user creation."
         )
 
-    return new_user
+    return UserRegistrationResponseSchema(id=new_user.id, email=new_user.email)
 
 
 @router.post(
@@ -83,11 +80,11 @@ async def create_user(
     status_code=status.HTTP_201_CREATED,
 )
 async def login_user(
-        user_data: UserCreateRequestSchema,
+        user_data: UserLoginRequestSchema,
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         settings: BaseAppSettings = Depends(get_settings),
         db: AsyncSession = Depends(get_db),
-) -> UserLoginRequestSchema:
+) -> UserLoginResponseSchema:
     user = await db.scalar(
         select(UserModel)
         .where(UserModel.email == user_data.email)
@@ -226,7 +223,7 @@ async def complete_password_reset(
             select(UserModel)
             .where(UserModel.email == data.email)
         )
-        if not user:
+        if not user or user.is_active is False:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid email or token.",
