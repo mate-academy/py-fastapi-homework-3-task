@@ -49,7 +49,7 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # 1) Uniqueness by email
+    # 1) Перевірка унікальності email
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -57,14 +57,14 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # 2) Default group USER (seeded by migrations)
+    # 2) Група за замовчуванням USER (засіджена міграціями)
     res_group = await db.execute(
         select(UserGroupModel).where(UserGroupModel.name == "USER")
     )
     default_group = res_group.scalar_one_or_none()
 
     try:
-        # 3) Create user (note: column is _hashed_password)
+        # 3) Створення користувача (увага: колонка _hashed_password)
         user = UserModel(
             email=user_data.email,
             _hashed_password=hash_password(user_data.password),
@@ -72,9 +72,9 @@ async def register_user(
             group=default_group,
         )
         db.add(user)
-        await db.flush()  # get user.id
+        await db.flush()  # отримати user.id
 
-        # 4) Create activation token (24h)
+        # 4) Створення activation token (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -102,7 +102,7 @@ async def activate_account(
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
     if user is None:
-        # Do not leak presence of user
+        # не палимо існування користувача
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     if user.is_active:
@@ -136,11 +136,11 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
-        # Drop previous tokens
+        # Скинути попередні токени
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
-        # Issue new token (2h)
+        # Видати новий токен (2h)
         reset_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -149,7 +149,7 @@ async def request_password_reset(
         db.add(reset_token)
         await db.commit()
 
-    # Always return generic success
+    # Завжди однакова відповідь
     return MessageResponse(message="If you are registered, you will receive an email with instructions.")
 
 
@@ -208,11 +208,11 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # Save refresh token manually (avoid model.create() signature issues)
+        # Явно виставляємо expires_at, щоб уникнути NOT NULL помилок
         rt = RefreshTokenModel(
             user_id=cast(int, user.id),
             token=refresh_token,
-            # expires_at може виставлятися тригером/дефолтом у моделі; якщо ні — задайте тут.
+            expires_at=_utcnow() + timedelta(days=7),
         )
         db.add(rt)
 
@@ -234,7 +234,7 @@ async def refresh_access_token(
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     db: AsyncSession = Depends(get_db),
 ):
-    # Validate refresh token & expiry
+    # Валідуємо refresh токен та строк дії
     try:
         decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
@@ -242,7 +242,7 @@ async def refresh_access_token(
 
     user_id = cast(int, decoded.get("user_id"))
 
-    # Check that this refresh token exists in DB
+    # Має існувати запис із цим токеном у БД
     res_rt = await db.execute(
         select(RefreshTokenModel).where(RefreshTokenModel.token == payload.refresh_token)
     )
@@ -250,12 +250,12 @@ async def refresh_access_token(
     if rt is None:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
 
-    # Validate user exists
+    # Користувач має існувати
     res_user = await db.execute(select(UserModel).where(UserModel.id == user_id))
     user = res_user.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
-    # Issue new access
+    # Видаємо новий access
     access = jwt_manager.create_access_token(user_id=user_id)
     return RefreshResponseSchema(access_token=access)
