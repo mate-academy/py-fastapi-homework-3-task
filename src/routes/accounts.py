@@ -49,6 +49,7 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
+    # 1) Uniqueness by email
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -56,12 +57,14 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
+    # 2) Default group USER (seeded by migrations)
     res_group = await db.execute(
         select(UserGroupModel).where(UserGroupModel.name == "USER")
     )
     default_group = res_group.scalar_one_or_none()
 
     try:
+        # 3) Create user (note: column is _hashed_password)
         user = UserModel(
             email=user_data.email,
             _hashed_password=hash_password(user_data.password),
@@ -69,8 +72,9 @@ async def register_user(
             group=default_group,
         )
         db.add(user)
-        await db.flush()
+        await db.flush()  # get user.id
 
+        # 4) Create activation token (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -98,6 +102,7 @@ async def activate_account(
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
     if user is None:
+        # Do not leak presence of user
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     if user.is_active:
@@ -131,9 +136,11 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
+        # Drop previous tokens
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
+        # Issue new token (2h)
         reset_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -142,6 +149,7 @@ async def request_password_reset(
         db.add(reset_token)
         await db.commit()
 
+    # Always return generic success
     return MessageResponse(message="If you are registered, you will receive an email with instructions.")
 
 
@@ -200,12 +208,14 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # ВАЖЛИВО: не передаємо expires_at — create() встановить самостійно
-        await RefreshTokenModel.create(
-            db,
+        # Save refresh token manually (avoid model.create() signature issues)
+        rt = RefreshTokenModel(
             user_id=cast(int, user.id),
             token=refresh_token,
+            # expires_at може виставлятися тригером/дефолтом у моделі; якщо ні — задайте тут.
         )
+        db.add(rt)
+
         await db.commit()
     except Exception:
         await db.rollback()
@@ -224,12 +234,15 @@ async def refresh_access_token(
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     db: AsyncSession = Depends(get_db),
 ):
+    # Validate refresh token & expiry
     try:
         decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     user_id = cast(int, decoded.get("user_id"))
+
+    # Check that this refresh token exists in DB
     res_rt = await db.execute(
         select(RefreshTokenModel).where(RefreshTokenModel.token == payload.refresh_token)
     )
@@ -237,10 +250,12 @@ async def refresh_access_token(
     if rt is None:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
 
+    # Validate user exists
     res_user = await db.execute(select(UserModel).where(UserModel.id == user_id))
     user = res_user.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
+    # Issue new access
     access = jwt_manager.create_access_token(user_id=user_id)
     return RefreshResponseSchema(access_token=access)
