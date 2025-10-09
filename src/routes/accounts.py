@@ -69,16 +69,16 @@ async def register_user(
         new_user = UserModel.create(
             email=user_data.email,
             raw_password=user_data.password,
-            group_id=cast(int, user_group.id),
+            group_id=user_group.id,
         )
         db.add(new_user)
         await db.flush()
 
-        activation_token = ActivationTokenModel(user_id=cast(int, new_user.id))
+        activation_token = ActivationTokenModel(user_id=new_user.id)
         db.add(activation_token)
 
         await db.commit()
-        await db.refresh(new_user)
+
 
         return UserRegistrationResponseSchema.model_validate(new_user)
 
@@ -115,10 +115,8 @@ async def activate_user(
             detail="Invalid or expired activation token.",
         )
 
-    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    expires_at = token_record.expires_at.replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
-        await db.delete(token_record)
-        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token.",
@@ -226,6 +224,14 @@ async def reset_password_complete(
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
+        )
+
+    if not user.is_active:
+        await db.delete(token_record)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
         )
 
     try:
