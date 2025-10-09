@@ -79,7 +79,6 @@ async def register_user(
 
         await db.commit()
 
-
         return UserRegistrationResponseSchema.model_validate(new_user)
 
     except SQLAlchemyError:
