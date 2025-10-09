@@ -7,7 +7,8 @@ from crud.accounts import (
     activate_user_account,
     reset_password,
     request_password_reset_token,
-    login_logic, refresh_token_logic
+    login_logic,
+    refresh_token_logic,
 )
 from database import get_db
 from schemas import (
@@ -18,9 +19,11 @@ from schemas import (
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
     UserLoginResponseSchema,
-    UserLoginRequestSchema, TokenRefreshRequestSchema, TokenRefreshResponseSchema
+    UserLoginRequestSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema,
 )
-from security.token_manager import JWTAuthManager
+from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
 
@@ -63,7 +66,7 @@ async def password_reset_request(user_data: PasswordResetRequestSchema, db: Asyn
 async def login(
     user_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     settings: BaseAppSettings = Depends(get_settings),
 ):
     return await login_logic(user_data, db, jwt_manager, settings)
@@ -71,8 +74,8 @@ async def login(
 
 @router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=status.HTTP_200_OK)
 async def refresh(
-        refresh_data: TokenRefreshRequestSchema,
-        db: AsyncSession = Depends(get_db),
-        jwt_manager: JWTAuthManager = Depends(get_jwt_auth_manager)
+    refresh_data: TokenRefreshRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     return await refresh_token_logic(refresh_data, db, jwt_manager)

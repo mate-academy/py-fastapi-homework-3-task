@@ -24,8 +24,10 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select, delete
 
-
-async def create_user_with_hash_password(db, user_data: UserRegistrationRequestSchema):
+async def create_user_with_hash_password(
+    db: AsyncSession,
+    user_data: UserRegistrationRequestSchema
+):
     try:
         if await db.scalar(select(UserModel).where(UserModel.email == user_data.email)):
             raise HTTPException(
@@ -37,22 +39,28 @@ async def create_user_with_hash_password(db, user_data: UserRegistrationRequestS
             select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
         )
         if not user_group:
-            raise HTTPException(status_code=500, detail="User group not found.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User group not found."
+            )
 
         user = UserModel.create(
             email=user_data.email,
             raw_password=user_data.password,
             group_id=user_group.id,
         )
+
         db.add_all([user, ActivationTokenModel(user=user)])
         await db.commit()
+
+        await db.refresh(user)
 
         return user
 
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during user creation."
         )
 
@@ -172,32 +180,42 @@ async def reset_password(db: AsyncSession, user_data: PasswordResetCompleteReque
 
 
 async def request_password_reset_token(
-        user_data : PasswordResetRequestSchema,
+        user_data: PasswordResetRequestSchema,
         db: AsyncSession
 ):
     try:
         stmt = select(UserModel).where(UserModel.email == user_data.email)
         existing_user = await db.execute(stmt)
         user = existing_user.scalars().first()
+
         if not user or not user.is_active:
             return {
                 "message": "If you are registered, you will receive an email with instructions."
             }
 
-        await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
+        await db.execute(
+            delete(PasswordResetTokenModel).where(
+                PasswordResetTokenModel.user_id == user.id
+            )
+        )
 
-        new_token = PasswordResetTokenModel(user=user)
+        new_token = PasswordResetTokenModel(user_id=int(user.id))
         db.add(new_token)
+
         await db.commit()
+        await db.refresh(new_token)
+
         return {
             "message": "If you are registered, you will receive an email with instructions."
         }
+
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request."
         )
+
 
 
 async def login_logic(
