@@ -200,12 +200,11 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        expires_at = _utcnow() + timedelta(days=7)
+        # ВАЖЛИВО: не передаємо expires_at — create() встановить самостійно
         await RefreshTokenModel.create(
             db,
             user_id=cast(int, user.id),
             token=refresh_token,
-            expires_at=expires_at,
         )
         await db.commit()
     except Exception:
