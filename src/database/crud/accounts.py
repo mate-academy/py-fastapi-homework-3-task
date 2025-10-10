@@ -58,4 +58,3 @@ async def get_password_reset_token(db: AsyncSession, user_id: int) -> PasswordRe
 async def get_refresh_token(db: AsyncSession, token: str) -> RefreshTokenModel | None:
     result = await db.execute(select(RefreshTokenModel).where(RefreshTokenModel.token == token))
     return result.scalar_one_or_none()
-

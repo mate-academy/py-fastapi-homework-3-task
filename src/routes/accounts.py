@@ -43,7 +43,7 @@ async def register(
 ):
     try:
         existing_user = await get_user_by_email(db, user_data.email)
-        
+
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -51,7 +51,7 @@ async def register(
             )
 
         user_group = await get_user_group_by_name(db, UserGroupEnum.USER)
-        
+
         if not user_group:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -64,18 +64,18 @@ async def register(
             raw_password=user_data.password,
             group_id=cast(int, user_group.id)
         )
-        
+
         activation_token = ActivationTokenModel(user_id=cast(int, new_user.id))
         db.add(activation_token)
-        
+
         await db.commit()
         await db.refresh(new_user)
-        
+
         return UserRegistrationResponseSchema(
             id=new_user.id,
             email=new_user.email
         )
-    
+
     except HTTPException:
         raise
     except SQLAlchemyError:
@@ -92,7 +92,7 @@ async def activate(
     db: AsyncSession = Depends(get_db)
 ):
     user = await get_user_with_activation_token(db, activation_data.email)
-    
+
     if not user or not user.activation_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -114,7 +114,7 @@ async def activate(
     expires_at = cast(datetime, user.activation_token.expires_at)
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
-    
+
     if expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -124,7 +124,7 @@ async def activate(
     user.is_active = True
     await db.delete(user.activation_token)
     await db.commit()
-    
+
     return MessageResponseSchema(message="User account activated successfully.")
 
 
@@ -142,7 +142,7 @@ async def request_password_reset(
         reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
         db.add(reset_token)
         await db.commit()
-    
+
     return MessageResponseSchema(
         message="If you are registered, you will receive an email with instructions."
     )
@@ -155,7 +155,7 @@ async def reset_password_complete(
 ):
     try:
         user = await get_user_by_email(db, reset_data.email)
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -163,7 +163,7 @@ async def reset_password_complete(
             )
 
         token_record = await get_password_reset_token(db, user.id)
-        
+
         if not token_record or token_record.token != reset_data.token:
             if token_record:
                 await db.delete(token_record)
@@ -176,7 +176,7 @@ async def reset_password_complete(
         expires_at = cast(datetime, token_record.expires_at)
         if expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
-        
+
         if expires_at < datetime.now(timezone.utc):
             await db.delete(token_record)
             await db.commit()
@@ -188,9 +188,9 @@ async def reset_password_complete(
         user.password = reset_data.password
         await db.delete(token_record)
         await db.commit()
-        
+
         return MessageResponseSchema(message="Password reset successfully.")
-    
+
     except HTTPException:
         raise
     except SQLAlchemyError:
@@ -234,12 +234,12 @@ async def login(
         )
         db.add(refresh_token_record)
         await db.commit()
-        
+
         return UserLoginResponseSchema(
             access_token=access_token,
             refresh_token=refresh_token
         )
-    
+
     except HTTPException:
         raise
     except SQLAlchemyError:
@@ -273,7 +273,7 @@ async def refresh_token(
         user_id = payload.get("user_id")
 
         token_record = await get_refresh_token(db, refresh_data.refresh_token)
-        
+
         if not token_record:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -281,7 +281,7 @@ async def refresh_token(
             )
 
         user = await get_user_by_id(db, user_id)
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -289,8 +289,8 @@ async def refresh_token(
             )
 
         access_token = jwt_manager.create_access_token({"user_id": user.id})
-        
+
         return TokenRefreshResponseSchema(access_token=access_token)
-    
+
     except HTTPException:
         raise
