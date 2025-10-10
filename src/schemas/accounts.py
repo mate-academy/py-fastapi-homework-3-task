@@ -1,6 +1,66 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
-from database import accounts_validators
+from database.validators.accounts import validate_email, validate_password_strength
 
 
-# Write your code here
+class EmailSchema(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value):
+        validate_email(value)
+        return value.lower()
+
+
+class EmailPasswordSchema(EmailSchema):
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value):
+        validate_password_strength(value)
+        return value
+
+
+class MessageResponseSchema(BaseModel):
+    message: str
+
+
+class UserRegistrationRequestSchema(EmailPasswordSchema):
+    pass
+
+
+class UserRegistrationResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: str
+
+
+class UserLoginRequestSchema(EmailPasswordSchema):
+    pass
+
+
+class UserLoginResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class UserActivateRequestSchema(EmailSchema):
+    token: str
+
+
+class CompletePasswordResetRequestSchema(EmailPasswordSchema):
+    token: str
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    refresh_token: str
+
+
+class TokenRefreshResponseSchema(BaseModel):
+    access_token: str
