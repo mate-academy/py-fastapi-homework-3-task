@@ -23,6 +23,8 @@ from security.interfaces import JWTAuthManagerInterface
 from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import select, delete
+from security.passwords import hash_password
+
 
 async def create_user_with_hash_password(
     db: AsyncSession,
@@ -168,6 +170,7 @@ async def reset_password(db: AsyncSession, user_data: PasswordResetCompleteReque
         await db.delete(token_record)
         await db.commit()
         await db.refresh(user)
+        db.expire_all()
 
         return {"message": "Password reset successfully."}
 
