@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Optional
+from enum import Enum as PyEnum  # ✅ Python Enum
 
 from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
-    Enum,
+    Enum as SAEnum,   # ✅ SQLAlchemy Enum
     ForeignKey,
     Integer,
     String,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,7 +19,7 @@ from .base import Base
 from security.passwords import hash_password
 
 
-class UserGroupEnum(str, Enum):  # SQLAlchemy Enum
+class UserGroupEnum(str, PyEnum):
     ADMIN = "admin"
     USER = "user"
 
@@ -28,7 +28,7 @@ class UserGroupModel(Base):
     __tablename__ = "user_groups"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    name: Mapped[UserGroupEnum] = mapped_column(Enum(UserGroupEnum), nullable=False, unique=True)
+    name: Mapped[UserGroupEnum] = mapped_column(SAEnum(UserGroupEnum), nullable=False, unique=True)
 
     users: Mapped[list["UserModel"]] = relationship("UserModel", back_populates="group")
 
@@ -44,7 +44,7 @@ class UserModel(Base):
     group_id: Mapped[int | None] = mapped_column(ForeignKey("user_groups.id"), nullable=True, index=True)
     group: Mapped[Optional["UserGroupModel"]] = relationship("UserGroupModel", back_populates="users")
 
-    # one-to-one (scalar!) зв’язки
+    # one-to-one scalar relationships
     activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
         "ActivationTokenModel",
         back_populates="user",
@@ -109,7 +109,7 @@ class UserProfileModel(Base):
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
 
-    # УВАГА: не дублюємо UniqueConstraint("user_id"), бо вже є unique=True у колонці
+    # UniqueConstraint дублювати не потрібно — вже є unique=True на user_id
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile")
 
 
@@ -132,7 +132,7 @@ class RefreshTokenModel(Base):
         days_valid: int = 7,
         from_dt: datetime | None = None,
     ) -> "RefreshTokenModel":
-        base = (from_dt or datetime.utcnow())
+        base = from_dt or datetime.utcnow()
         return cls(
             user_id=user_id,
             token=token,
