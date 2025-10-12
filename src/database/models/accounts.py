@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -77,7 +78,6 @@ class UserModel(Base):
             group_id=group_id,
         )
 
-    # ✅ метод, якого бракувало тестам
     def verify_password(self, raw_password: str) -> bool:
         return _verify_password(raw_password, self._hashed_password)
 
@@ -120,7 +120,8 @@ class RefreshTokenModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    token: Mapped[str] = mapped_column(String(512), nullable=False, unique=True, index=True)
+    # JWT може бути >512 символів. Використаємо Text без ліміту.
+    token: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="refresh_tokens")
