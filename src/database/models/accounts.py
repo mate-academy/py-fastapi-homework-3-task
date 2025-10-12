@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Optional
-from enum import Enum as PyEnum  # ✅ Python Enum
+from enum import Enum as PyEnum  # Python Enum
 
 from sqlalchemy import (
     Boolean,
-    Column,
     DateTime,
-    Enum as SAEnum,   # ✅ SQLAlchemy Enum
+    Enum as SAEnum,   # SQLAlchemy Enum
     ForeignKey,
     Integer,
     String,
@@ -16,7 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
-from security.passwords import hash_password
+from security.passwords import hash_password, verify_password as _verify_password
 
 
 class UserGroupEnum(str, PyEnum):
@@ -78,6 +77,10 @@ class UserModel(Base):
             group_id=group_id,
         )
 
+    # ✅ метод, якого бракувало тестам
+    def verify_password(self, raw_password: str) -> bool:
+        return _verify_password(raw_password, self._hashed_password)
+
 
 class ActivationTokenModel(Base):
     __tablename__ = "activation_tokens"
@@ -109,7 +112,6 @@ class UserProfileModel(Base):
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
 
-    # UniqueConstraint дублювати не потрібно — вже є unique=True на user_id
     user: Mapped["UserModel"] = relationship("UserModel", back_populates="profile")
 
 
