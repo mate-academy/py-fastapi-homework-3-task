@@ -1,20 +1,21 @@
-# src/database/__init__.py
+# src/database/models/__init__.py
 
 # 1) База
-from database.models.base import Base
+from .base import Base
 
 # 2) Моделі (акаунти)
-from database.models.accounts import (
+from .accounts import (
     UserGroupModel,
     UserModel,
     UserProfileModel,
     ActivationTokenModel,
     PasswordResetTokenModel,
     RefreshTokenModel,
+    UserGroupEnum,
 )
 
 # 3) Моделі (фільми)
-from database.models.movies import (
+from .movies import (
     MovieModel,
     GenreModel,
     ActorModel,
@@ -23,22 +24,22 @@ from database.models.movies import (
 )
 
 # 4) Сесія / утиліти SQLite (для тестів)
-from database.session_sqlite import (
+from ..session_sqlite import (
     get_db,
     get_sqlite_db_contextmanager,
     init_db,
     close_db,
-    reset_database,  # фактична функція у session_sqlite.py
+    reset_database,
 )
 
-# Бек-сов сумісність: деякі тести/імпорти можуть очікувати reset_sqlite_database
+# Бек-сумісність: деякі імпорти можуть очікувати старі назви
 reset_sqlite_database = reset_database
 
-# 5) Seeder (опціонально)
+# 5) Seeder (опційно)
 try:
-    from database.populate import CSVDatabaseSeeder  # noqa: F401
-except Exception:
-    CSVDatabaseSeeder = None
+    from ..populate import CSVDatabaseSeeder  # noqa: F401
+except ImportError:
+    CSVDatabaseSeeder = None  # type: ignore[assignment]
 
 __all__ = [
     # база
@@ -50,6 +51,7 @@ __all__ = [
     "ActivationTokenModel",
     "PasswordResetTokenModel",
     "RefreshTokenModel",
+    "UserGroupEnum",
     # фільми
     "MovieModel",
     "GenreModel",
@@ -62,7 +64,7 @@ __all__ = [
     "init_db",
     "close_db",
     "reset_database",
-    "reset_sqlite_database",  # аліас для сумісності
+    "reset_sqlite_database",
     # сидер
     "CSVDatabaseSeeder",
 ]

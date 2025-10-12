@@ -3,25 +3,32 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from config import get_settings
-from database.models.base import Base
+from .models.base import Base
 
-settings = get_settings()
+_settings = get_settings()
 
-SQLITE_DATABASE_URL = f"sqlite+aiosqlite:///{settings.PATH_TO_DB}"
+SQLITE_DATABASE_URL = f"sqlite+aiosqlite:///{_settings.PATH_TO_DB}"
 engine = create_async_engine(SQLITE_DATABASE_URL, echo=False, future=True)
-AsyncSQLiteSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSQLiteSessionLocal = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    future=True,
+)
 
 
-async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Основна залежність для FastAPI роутів."""
     async with AsyncSQLiteSessionLocal() as session:
         yield session
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+# Залишаємо сумісні синоніми, бо їх може використовувати існуючий код/тести.
+async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSQLiteSessionLocal() as session:
         yield session
 
@@ -42,10 +49,7 @@ async def close_db() -> None:
 
 
 async def reset_database() -> None:
-    """
-    Drop all tables and recreate them.
-    Used by tests to ensure a clean SQLite DB state.
-    """
+    """Скидає БД (для тестів)."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
