@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Optional
-from enum import Enum as PyEnum  # Python Enum
+from enum import Enum as PyEnum
 
 from sqlalchemy import (
     Boolean,
     DateTime,
-    Enum as SAEnum,   # SQLAlchemy Enum
+    Enum as SAEnum,
     ForeignKey,
     Integer,
     String,
@@ -44,7 +44,6 @@ class UserModel(Base):
     group_id: Mapped[int | None] = mapped_column(ForeignKey("user_groups.id"), nullable=True, index=True)
     group: Mapped[Optional["UserGroupModel"]] = relationship("UserGroupModel", back_populates="users")
 
-    # one-to-one scalar relationships
     activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
         "ActivationTokenModel",
         back_populates="user",
@@ -120,7 +119,6 @@ class RefreshTokenModel(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    # JWT може бути >512 символів. Використаємо Text без ліміту.
     token: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
