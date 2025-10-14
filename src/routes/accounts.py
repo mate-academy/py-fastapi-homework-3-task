@@ -38,6 +38,7 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
 
 def _utcnow() -> datetime:
+    # timezone-aware для всіх дат у БД
     return datetime.now(timezone.utc)
 
 
@@ -45,13 +46,12 @@ def _gen_token() -> str:
     return uuid.uuid4().hex
 
 
-# ----------------------- Register -----------------------
 @router.post("/register/", response_model=UserResponseSchema, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # already exists?
+    # Перевірка дубля email
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -59,7 +59,7 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # default group USER (enum value is "user")
+    # Група за замовчуванням (enum value == "user")
     res_group = await db.execute(
         select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
     )
@@ -80,7 +80,7 @@ async def register_user(
         db.add(user)
         await db.flush()  # отримати user.id
 
-        # створити activation token (24 години)
+        # Токен активації на 24 год
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -100,13 +100,11 @@ async def register_user(
     return UserResponseSchema(id=cast(int, user.id), email=user.email)
 
 
-# ----------------------- Activate -----------------------
 @router.post("/activate/", response_model=MessageResponse)
 async def activate_account(
     payload: ActivateAccountRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # знайти користувача
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
     if user is None:
@@ -115,7 +113,6 @@ async def activate_account(
     if user.is_active:
         raise HTTPException(status_code=400, detail="User account is already active.")
 
-    # знайти токен
     res_token = await db.execute(
         select(ActivationTokenModel).where(ActivationTokenModel.user_id == cast(int, user.id))
     )
@@ -123,9 +120,7 @@ async def activate_account(
     if token_rec is None or token_rec.token != payload.token:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    # SQLite: зробити tz-aware для коректного порівняння
     expires = cast(datetime, token_rec.expires_at).replace(tzinfo=timezone.utc)
-
     if expires <= _utcnow():
         await db.delete(token_rec)
         await db.commit()
@@ -137,7 +132,6 @@ async def activate_account(
     return MessageResponse(message="User account activated successfully.")
 
 
-# ----------------------- Password reset: request -----------------------
 @router.post("/password-reset/request/", response_model=MessageResponse)
 async def request_password_reset(
     payload: PasswordResetRequestSchema,
@@ -147,11 +141,9 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
-        # видалити попередні токени
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
-        # створити новий (2 години)
         reset_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -160,11 +152,9 @@ async def request_password_reset(
         db.add(reset_token)
         await db.commit()
 
-    # завжди однакова відповідь
     return MessageResponse(message="If you are registered, you will receive an email with instructions.")
 
 
-# ----------------------- Password reset: complete -----------------------
 @router.post("/reset-password/complete/", response_model=MessageResponse)
 async def complete_password_reset(
     payload: PasswordResetCompleteRequestSchema,
@@ -202,7 +192,6 @@ async def complete_password_reset(
     return MessageResponse(message="Password reset successfully.")
 
 
-# ----------------------- Login -----------------------
 @router.post("/login/", response_model=LoginResponseSchema, status_code=status.HTTP_201_CREATED)
 async def login(
     payload: LoginRequestSchema,
@@ -211,7 +200,7 @@ async def login(
 ):
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
-    # Використовуємо метод моделі (так само як у тестах)
+    # Перевірка через метод моделі (як у тестах)
     if user is None or not user.verify_password(payload.password):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
@@ -222,17 +211,14 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # Якщо раптом провайдер видав однаковий токен — прибираємо можливий дубль,
-        # аби не впасти на UNIQUE(token)
-        await db.execute(
-            delete(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token)
-        )
+        # На всяк випадок прибираємо можливий дубль по token перед вставкою
+        await db.execute(delete(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token))
 
-        # Створюємо інстанс через фабрику моделі (без await), додаємо в сесію і коміт
-        rt = RefreshTokenModel.create(
+        # ❗ Без фабрики: створюємо напряму, expires_at — TZ-aware
+        rt = RefreshTokenModel(
             user_id=cast(int, user.id),
             token=refresh_token,
-            expires_at=datetime.utcnow() + timedelta(days=7),
+            expires_at=_utcnow() + timedelta(days=7),
         )
         db.add(rt)
         await db.commit()
@@ -247,7 +233,6 @@ async def login(
     )
 
 
-# ----------------------- Refresh -----------------------
 @router.post("/refresh/", response_model=RefreshResponseSchema)
 async def refresh_access_token(
     payload: RefreshRequestSchema,
@@ -257,7 +242,6 @@ async def refresh_access_token(
     try:
         decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
-        # у тестах очікують 400 для невалідного/протермінованого
         raise HTTPException(status_code=400, detail=str(e))
 
     user_id_raw = decoded.get("user_id")
