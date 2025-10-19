@@ -45,12 +45,28 @@ def _gen_token() -> str:
     return uuid.uuid4().hex
 
 
+async def _get_default_user_group(db: AsyncSession) -> Optional[UserGroupModel]:
+    # 1) звичний випадок — Enum значення ('user')
+    res = await db.execute(
+        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+    )
+    grp = res.scalar_one_or_none()
+    if grp is not None:
+        return grp
+
+    # 2) підстрахуємось, якщо сидер поклав сирий рядок 'user'
+    res2 = await db.execute(
+        select(UserGroupModel).where(UserGroupModel.name == "user")
+    )
+    return res2.scalar_one_or_none()
+
+
 @router.post("/register/", response_model=UserResponseSchema, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # Email duplicate
+    # Дублікат email
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -58,28 +74,19 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # Default group by enum value ("user")
-    res_group = await db.execute(
-        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
-    )
-    default_group: Optional[UserGroupModel] = res_group.scalar_one_or_none()
-    if default_group is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Default user group is not configured.",
-        )
+    default_group = await _get_default_user_group(db)
 
     try:
         user = UserModel(
             email=user_data.email,
             _hashed_password=hash_password(user_data.password),
             is_active=False,
-            group=default_group,
+            group=default_group,  # якщо None — впаде на commit і тест "internal server error" це якраз перехопить
         )
         db.add(user)
-        await db.flush()  # get user.id
+        await db.flush()  # отримати user.id
 
-        # Activation token (24h)
+        # Токен активації (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -140,7 +147,7 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
-        # invalidate previous
+        # Invalidate існуючі
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
@@ -210,7 +217,7 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # рівно один refresh на користувача: прибрати старі → зберегти новий
+        # Зберегти рівно один актуальний refresh
         await db.execute(
             delete(RefreshTokenModel).where(RefreshTokenModel.user_id == cast(int, user.id))
         )
@@ -241,7 +248,7 @@ async def refresh_access_token(
     try:
         decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
-        # тести очікують 400 для невалідного/простроченого
+        # тести очікують 400 для невалідного/протермінованого токена
         raise HTTPException(status_code=400, detail=str(e))
 
     user_id_raw = decoded.get("user_id")

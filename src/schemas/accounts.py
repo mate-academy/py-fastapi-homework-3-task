@@ -4,6 +4,22 @@ from pydantic import BaseModel, Field, EmailStr, field_validator
 import re
 
 
+def _validate_password_common(v: str) -> str:
+    # Порядок повідомлень ПОВИНЕН збігатися з тестами:
+    # 1) довжина, 2) наявність великої (UPPERCASE), 3) наявність малої, 4) цифра, 5) спецсимвол
+    if len(v) < 8:
+        raise ValueError("Password must contain at least 8 characters.")
+    if not re.search(r"[A-Z]", v):
+        raise ValueError("Password must contain at least one uppercase letter.")
+    if not re.search(r"[a-z]", v):
+        raise ValueError("Password must contain at least one lower letter.")
+    if not re.search(r"\d", v):
+        raise ValueError("Password must contain at least one digit.")
+    if not re.search(r"[@$!%*?#&]", v):
+        raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
+    return v
+
+
 # === Requests ===
 
 class UserRegistrationRequestSchema(BaseModel):
@@ -13,18 +29,7 @@ class UserRegistrationRequestSchema(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        # Порядок і тексти збігаються з тестами
-        if len(v) < 8:
-            raise ValueError("Password must contain at least 8 characters.")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain at least one digit.")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter.")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain at least one lower letter.")
-        if not re.search(r"[@$!%*?#&]", v):
-            raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
-        return v
+        return _validate_password_common(v)
 
 
 class ActivateAccountRequestSchema(BaseModel):
@@ -44,18 +49,7 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        # такі самі вимоги як при реєстрації
-        if len(v) < 8:
-            raise ValueError("Password must contain at least 8 characters.")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain at least one digit.")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain at least one uppercase letter.")
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain at least one lower letter.")
-        if not re.search(r"[@$!%*?#&]", v):
-            raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
-        return v
+        return _validate_password_common(v)
 
 
 class LoginRequestSchema(BaseModel):
