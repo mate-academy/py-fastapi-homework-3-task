@@ -1,5 +1,6 @@
-# Re-export models, session helpers, and provide a lazy export for CSVDatabaseSeeder
-# to avoid circular imports with database.populate.
+# Central exports for database package.
+# IMPORTANT: do NOT import .populate here to avoid circular imports.
+# If tests/fixtures need CSVDatabaseSeeder, we expose it lazily via __getattr__.
 
 from .models.base import Base  # noqa: F401
 
@@ -14,7 +15,7 @@ from .models.accounts import (  # noqa: F401
     RefreshTokenModel,
 )
 
-# Movies models (export everything tests/seeders might need)
+# Movies models (export everything seeders/tests might need)
 from .models.movies import (  # noqa: F401
     MovieModel,
     GenreModel,
@@ -24,16 +25,16 @@ from .models.movies import (  # noqa: F401
 )
 from .populate import CSVDatabaseSeeder
 
-# Some templates also expose an association model; export if present
+# Some templates/projects have this association model
 try:  # noqa: SIM105
     from .models.movies import MoviesGenresModel  # type: ignore  # noqa: F401
-except Exception:  # not all templates have this
+except Exception:
     MoviesGenresModel = None  # type: ignore
 
 # Primary async DB dependency expected by routes/tests
 from .session_sqlite import get_db  # noqa: F401
 
-# Some fixtures import a contextmanager helper; provide if available
+# Some tests/fixtures may still import this helper; provide it if present
 try:  # noqa: SIM105
     from .session_sqlite import get_db_contextmanager  # type: ignore  # noqa: F401
 except Exception:
@@ -44,9 +45,10 @@ def __getattr__(name: str):
     """
     Lazy attribute loader to avoid circular import with database.populate.
 
-    Tests/fixtures do: `from database import CSVDatabaseSeeder`.
-    If we import populate at module import time, it imports `database` back and
-    creates a cycle. Loading it lazily here breaks the cycle.
+    Usage in tests/fixtures is typically:
+        from database import CSVDatabaseSeeder
+
+    We only import .populate when CSVDatabaseSeeder is actually accessed.
     """
     if name == "CSVDatabaseSeeder":
         from .populate import CSVDatabaseSeeder  # type: ignore
