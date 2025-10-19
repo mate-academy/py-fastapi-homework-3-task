@@ -23,7 +23,6 @@ from .models.movies import (  # noqa: F401
     CountryModel,
     LanguageModel,
 )
-from .populate import CSVDatabaseSeeder
 
 # Some templates/projects have this association model
 try:  # noqa: SIM105
