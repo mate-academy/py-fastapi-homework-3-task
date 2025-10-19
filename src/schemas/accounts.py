@@ -1,55 +1,37 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, Field, EmailStr, field_validator
+import re
 
 
-# ---------- Common ----------
-class MessageResponse(BaseModel):
-    message: str
+# === Requests ===
 
-
-# ---------- Register ----------
 class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
-    # НЕ ставимо Field(min_length=8), щоб віддати наше кастомне повідомлення, а не стандартне Pydantic
     password: str
 
     @field_validator("password")
     @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        # Порядок перевірок має значення для тестів:
-        # 1) довжина
-        # 2) наявність великої літери
-        # 3) наявність малої літери
-        # 4) наявність цифри
-        # 5) наявність спецсимвола
+    def validate_password(cls, v: str) -> str:
+        # Порядок і тексти збігаються з тестами
         if len(v) < 8:
             raise ValueError("Password must contain at least 8 characters.")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter.")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least one lower letter.")
-        if not any(c.isdigit() for c in v):
+        if not re.search(r"\d", v):
             raise ValueError("Password must contain at least one digit.")
-        if not any(c in "@$!%*?#&" for c in v):
-            raise ValueError(
-                "Password must contain at least one special character: @, $, !, %, *, ?, #, &."
-            )
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lower letter.")
+        if not re.search(r"[@$!%*?#&]", v):
+            raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
         return v
 
 
-class UserResponseSchema(BaseModel):
-    id: int
-    email: EmailStr
-
-
-# ---------- Activation ----------
 class ActivateAccountRequestSchema(BaseModel):
     email: EmailStr
     token: str
 
 
-# ---------- Password reset ----------
 class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
@@ -57,43 +39,50 @@ class PasswordResetRequestSchema(BaseModel):
 class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
-    # Аналогічно — без Field(min_length=8), щоб повернути наше повідомлення
     password: str
 
     @field_validator("password")
     @classmethod
-    def validate_password_strength(cls, v: str) -> str:
+    def validate_password(cls, v: str) -> str:
+        # такі самі вимоги як при реєстрації
         if len(v) < 8:
             raise ValueError("Password must contain at least 8 characters.")
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter.")
-        if not any(c.islower() for c in v):
-            raise ValueError("Password must contain at least one lower letter.")
-        if not any(c.isdigit() for c in v):
+        if not re.search(r"\d", v):
             raise ValueError("Password must contain at least one digit.")
-        if not any(c in "@$!%*?#&" for c in v):
-            raise ValueError(
-                "Password must contain at least one special character: @, $, !, %, *, ?, #, &."
-            )
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain at least one lower letter.")
+        if not re.search(r"[@$!%*?#&]", v):
+            raise ValueError("Password must contain at least one special character: @, $, !, %, *, ?, #, &.")
         return v
 
 
-# ---------- Login ----------
 class LoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
 
-class LoginResponseSchema(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-# ---------- Refresh ----------
 class RefreshRequestSchema(BaseModel):
     refresh_token: str
 
 
+# === Responses ===
+
+class UserResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+
+
+class LoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = Field(default="bearer")
+
+
 class RefreshResponseSchema(BaseModel):
     access_token: str
+
+
+class MessageResponse(BaseModel):
+    message: str

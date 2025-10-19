@@ -38,7 +38,6 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
 
 def _utcnow() -> datetime:
-    # timezone-aware для всіх дат у БД
     return datetime.now(timezone.utc)
 
 
@@ -51,7 +50,7 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ):
-    # Перевірка дубля email
+    # Email duplicate
     res = await db.execute(select(UserModel).where(UserModel.email == user_data.email))
     if res.scalar_one_or_none():
         raise HTTPException(
@@ -59,7 +58,7 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    # Група за замовчуванням (enum value == "user")
+    # Default group by enum value ("user")
     res_group = await db.execute(
         select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
     )
@@ -78,9 +77,9 @@ async def register_user(
             group=default_group,
         )
         db.add(user)
-        await db.flush()  # отримати user.id
+        await db.flush()  # get user.id
 
-        # Токен активації на 24 год
+        # Activation token (24h)
         token = ActivationTokenModel(
             user_id=cast(int, user.id),
             token=_gen_token(),
@@ -141,6 +140,7 @@ async def request_password_reset(
     user = res_user.scalar_one_or_none()
 
     if user and user.is_active:
+        # invalidate previous
         await db.execute(
             delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == cast(int, user.id))
         )
@@ -200,7 +200,6 @@ async def login(
 ):
     res_user = await db.execute(select(UserModel).where(UserModel.email == payload.email))
     user = res_user.scalar_one_or_none()
-    # Перевірка через метод моделі (як у тестах)
     if user is None or not user.verify_password(payload.password):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
 
@@ -211,10 +210,10 @@ async def login(
         access_token = jwt_manager.create_access_token(user_id=cast(int, user.id))
         refresh_token = jwt_manager.create_refresh_token(user_id=cast(int, user.id))
 
-        # На всяк випадок прибираємо можливий дубль по token перед вставкою
-        await db.execute(delete(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token))
-
-        # ❗ Без фабрики: створюємо напряму, expires_at — TZ-aware
+        # рівно один refresh на користувача: прибрати старі → зберегти новий
+        await db.execute(
+            delete(RefreshTokenModel).where(RefreshTokenModel.user_id == cast(int, user.id))
+        )
         rt = RefreshTokenModel(
             user_id=cast(int, user.id),
             token=refresh_token,
@@ -242,6 +241,7 @@ async def refresh_access_token(
     try:
         decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
+        # тести очікують 400 для невалідного/простроченого
         raise HTTPException(status_code=400, detail=str(e))
 
     user_id_raw = decoded.get("user_id")
