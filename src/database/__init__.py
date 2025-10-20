@@ -1,11 +1,12 @@
-# Central exports for database package.
-# IMPORTANT: do NOT import .populate here to avoid circular imports.
-# If tests/fixtures need CSVDatabaseSeeder, we expose it lazily via __getattr__.
+# src/database/__init__.py
 
-from .models.base import Base  # noqa: F401
+from typing import TYPE_CHECKING, Any
 
-# Accounts models
-from .models.accounts import (  # noqa: F401
+# 1) Базова модель
+from .models.base import Base
+
+# 2) Моделі акаунтів
+from .models.accounts import (
     UserGroupEnum,
     UserGroupModel,
     UserModel,
@@ -15,50 +16,27 @@ from .models.accounts import (  # noqa: F401
     RefreshTokenModel,
 )
 
-# Movies models (export everything seeders/tests might need)
-from .models.movies import (  # noqa: F401
+# 3) Моделі фільмів
+from .models.movies import (
     MovieModel,
     GenreModel,
     ActorModel,
     CountryModel,
     LanguageModel,
+    MoviesGenresModel,
 )
 
-# Some templates/projects have this association model
-try:  # noqa: SIM105
-    from .models.movies import MoviesGenresModel  # type: ignore  # noqa: F401
-except Exception:
-    MoviesGenresModel = None  # type: ignore
-
-# Primary async DB dependency expected by routes/tests
-from .session_sqlite import get_db  # noqa: F401
-
-# Some tests/fixtures may still import this helper; provide it if present
-try:  # noqa: SIM105
-    from .session_sqlite import get_db_contextmanager  # type: ignore  # noqa: F401
-except Exception:
-    get_db_contextmanager = None  # type: ignore
-
-
-def __getattr__(name: str):
-    """
-    Lazy attribute loader to avoid circular import with database.populate.
-
-    Usage in tests/fixtures is typically:
-        from database import CSVDatabaseSeeder
-
-    We only import .populate when CSVDatabaseSeeder is actually accessed.
-    """
-    if name == "CSVDatabaseSeeder":
-        from .populate import CSVDatabaseSeeder  # type: ignore
-        return CSVDatabaseSeeder
-    raise AttributeError(f"module 'database' has no attribute {name!r}")
-
+# 4) Сесія SQLite (для тестів)
+from .session_sqlite import (
+    get_db,
+    get_db_contextmanager,
+    reset_sqlite_database as reset_database,
+)
 
 __all__ = [
-    # base
+    # Base
     "Base",
-    # accounts
+    # Accounts
     "UserGroupEnum",
     "UserGroupModel",
     "UserModel",
@@ -66,16 +44,30 @@ __all__ = [
     "ActivationTokenModel",
     "PasswordResetTokenModel",
     "RefreshTokenModel",
-    # movies
+    # Movies
     "MovieModel",
     "GenreModel",
     "ActorModel",
     "CountryModel",
     "LanguageModel",
     "MoviesGenresModel",
-    # session helpers
+    # Session / utils
     "get_db",
     "get_db_contextmanager",
-    # seeder (lazy via __getattr__)
+    "reset_database",
+    # Seeder (lazy)
     "CSVDatabaseSeeder",
 ]
+
+
+# Ліниве завантаження CSVDatabaseSeeder, щоб уникнути циклічного імпорту
+def __getattr__(name: str) -> Any:
+    if name == "CSVDatabaseSeeder":
+        from .populate import CSVDatabaseSeeder
+        return CSVDatabaseSeeder
+    raise AttributeError(f"module {__name__} has no attribute {name}")
+
+
+# Це для того, щоб IDE (PyCharm, mypy, pyright) бачили CSVDatabaseSeeder
+if TYPE_CHECKING:
+    from .populate import CSVDatabaseSeeder

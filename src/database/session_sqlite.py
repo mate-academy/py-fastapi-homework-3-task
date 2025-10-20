@@ -1,55 +1,70 @@
+# src/database/session_sqlite.py
+
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+import contextlib
+from typing import AsyncIterator
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import NullPool
 
-from config import get_settings
 from .models.base import Base
 
-_settings = get_settings()
+# Використовуємо окремий файл бази для інтеграційних тестів.
+# За потреби шлях можна змінити через ENV і підставити тут.
+DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 
-SQLITE_DATABASE_URL = f"sqlite+aiosqlite:///{_settings.PATH_TO_DB}"
-engine = create_async_engine(SQLITE_DATABASE_URL, echo=False, future=True)
-AsyncSQLiteSessionLocal = sessionmaker(
-    bind=engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
+# Створюємо async-двигун для SQLite
+engine: AsyncEngine = create_async_engine(
+    DATABASE_URL,
+    echo=False,
     future=True,
+    poolclass=NullPool,  # уникаємо кешу конекшенів для більш передбачуваних тестів
+)
+
+# Фабрика асинхронних сесій
+AsyncSQLiteSessionLocal = async_sessionmaker(
+    bind=engine,
+    expire_on_commit=False,
+    class_=AsyncSession,
 )
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """Основна залежність для FastAPI роутів."""
+async def get_db() -> AsyncIterator[AsyncSession]:
+    """
+    FastAPI dependency-style генератор сесії.
+    Використовується роутами як Depends(get_db).
+    """
+    async with AsyncSQLiteSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            # Нічого особливого: контекст сам закриє з’єднання
+            pass
+
+
+@contextlib.asynccontextmanager
+async def get_db_contextmanager() -> AsyncIterator[AsyncSession]:
+    """
+    Зручний async contextmanager для тестів/скриптів:
+        async with get_db_contextmanager() as db:
+            ...
+    """
     async with AsyncSQLiteSessionLocal() as session:
         yield session
 
 
-# Залишаємо сумісні синоніми, бо їх може використовувати існуючий код/тести.
-async def get_sqlite_db() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSQLiteSessionLocal() as session:
-        yield session
-
-
-@asynccontextmanager
-async def get_sqlite_db_contextmanager() -> AsyncGenerator[AsyncSession, None]:
-    async with AsyncSQLiteSessionLocal() as session:
-        yield session
-
-
-async def init_db() -> None:
+async def reset_sqlite_database() -> None:
+    """
+    Повний скидання схеми: DROP ALL + CREATE ALL.
+    Корисно для інтеграційних тестів.
+    """
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-
-async def close_db() -> None:
-    await engine.dispose()
-
-
-async def reset_database() -> None:
-    """Скидає БД (для тестів)."""
-    async with engine.begin() as conn:
+        # Операції зі схемою виконуємо через run_sync
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
