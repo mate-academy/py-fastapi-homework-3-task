@@ -131,7 +131,7 @@ async def reset_password(
         db: AsyncSession = Depends(get_db)
 ):
     user = await db.scalar(select(UserModel).where(UserModel.email == data.email.lower()))
-    if not user:
+    if not user or not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     token = await db.scalar(
@@ -159,7 +159,7 @@ async def reset_password(
 
 
 @router.post("/login/", response_model=UserLoginResponseSchema,
-             status_code=status.HTTP_201_CREATED)
+             status_code=status.HTTP_200_OK)
 async def login_user(
         data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
