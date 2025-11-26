@@ -11,7 +11,7 @@ from database import (
     ActorModel,
     LanguageModel
 )
-from schemas import (
+from src.schemas.movies import (
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieDetailSchema
