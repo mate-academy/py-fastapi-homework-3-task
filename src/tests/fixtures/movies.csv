@@ -1,0 +1,16 @@
+id,names,date_x,score,overview,status,budget_x,revenue,country,genre,crew,orig_lang
+1,Movie One,2025-01-01,80,Overview 1,Released,1000000,5000000,US,Action|Adventure,JaneDoe|JohnDoe,English|French
+2,Movie Two,2025-02-01,85,Overview 2,Released,1500000,6000000,GB,Drama|Thriller,ActorA|ActorB,English
+3,Movie Three,2025-03-01,90,Overview 3,Released,2000000,7000000,CA,Comedy|Romance,ActorX|ActorY,English|French
+4,Movie Four,2025-04-01,75,Overview 4,Released,1200000,5500000,US,Horror|Mystery,Actor1|Actor2,English
+5,Movie Five,2025-05-01,88,Overview 5,Released,1300000,6500000,GB,Action|Thriller,Actor3|Actor4,English
+6,Movie Six,2025-06-01,92,Overview 6,Released,1400000,7200000,CA,Drama|Comedy,Actor5|Actor6,English|French
+7,Movie Seven,2025-07-01,81,Overview 7,Released,1100000,5300000,US,Adventure|Fantasy,Actor7|Actor8,English
+8,Movie Eight,2025-08-01,77,Overview 8,Released,1150000,5600000,GB,Horror|Thriller,Actor10|Actor9,English
+9,Movie Nine,2025-09-01,84,Overview 9,Released,1250000,6000000,CA,Action|Comedy,Actor11|Actor12,English|French
+10,Movie Ten,2025-10-01,89,Overview 10,Released,1350000,6500000,US,Romance|Drama,Actor13|Actor14,English
+11,Movie Eleven,2025-11-01,91,Overview 11,Released,1450000,7000000,GB,Action|Adventure,Actor15|Actor16,English
+12,Movie Twelve,2025-12-01,78,Overview 12,Released,1500000,7200000,CA,Comedy|Fantasy,Actor17|Actor18,English|French
+13,Movie Thirteen,2025-01-15,83,Overview 13,Released,1550000,7300000,US,Drama|Thriller,Actor19|Actor20,English
+14,Movie Fourteen,2025-02-20,86,Overview 14,Released,1600000,7400000,GB,Adventure|Action,Actor21|Actor22,English
+15,Movie Fifteen,2025-03-25,90,Overview 15,Released,1650000,7500000,CA,Comedy|Romance,Actor23|Actor24,English|French
