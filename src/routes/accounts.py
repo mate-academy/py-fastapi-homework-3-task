@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from datetime import datetime, timezone
 
+from database import get_db
 from database.models.accounts import (
     UserModel,
     UserGroupModel,
@@ -11,7 +12,6 @@ from database.models.accounts import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from database.session_postgresql import get_db
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -24,7 +24,6 @@ from schemas.accounts import (
     TokenRefreshResponseSchema,
     MessageResponseSchema
 )
-# Виправлені імпорти згідно з вашою структурою
 from security.interfaces import JWTAuthManagerInterface
 from config.dependencies import get_jwt_auth_manager, get_settings
 from config.settings import BaseAppSettings
