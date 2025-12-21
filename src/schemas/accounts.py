@@ -46,3 +46,7 @@ class TokenResponseSchema(BaseModel):
 
 class RefreshTokenResponseSchema(BaseModel):
     access_token: str
+
+
+class MessageResponseSchema(BaseModel):
+    message: str
