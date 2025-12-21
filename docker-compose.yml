@@ -1,6 +1,6 @@
 services:
   db:
-    image: 'postgres:latest'
+    image: 'postgres:15'
     container_name: postgres_theater
     env_file:
       - .env
@@ -41,16 +41,15 @@ services:
     env_file:
       - .env
     environment:
-      - LOG_LEVEL=debug
-      - PYTHONPATH=/usr/src/fastapi
-      - WATCHFILES_FORCE_POLLING=true
+      - PYTHONPATH=/usr/src/app
+      - ENVIRONMENT=developing
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./src:/usr/src/fastapi
+      - ./src:/usr/src/app
     networks:
       - theater_network
 
