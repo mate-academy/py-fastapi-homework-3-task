@@ -3,8 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from datetime import datetime, timezone
 
-from database import (
-    get_db,
+from database.models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupEnum,
@@ -12,6 +11,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
+from database.session_postgresql import get_db
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -24,8 +24,10 @@ from schemas.accounts import (
     TokenRefreshResponseSchema,
     MessageResponseSchema
 )
-from security.auth import get_jwt_auth_manager, JWTAuthManagerInterface
-from core.config import get_settings, BaseAppSettings
+# Виправлені імпорти згідно з вашою структурою
+from security.interfaces import JWTAuthManagerInterface
+from config.dependencies import get_jwt_auth_manager, get_settings
+from config.settings import BaseAppSettings
 
 router = APIRouter(tags=["Accounts"])
 
@@ -152,10 +154,7 @@ async def complete_password_reset(
         await db.commit()
     except Exception:
         await db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred while resetting the password."
-        )
+        raise HTTPException(status_code=500, detail="An error occurred.")
 
     return {"message": "Password reset successfully."}
 
@@ -195,10 +194,7 @@ async def login(
             "token_type": "bearer"
         }
     except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="An error occurred while processing the request."
-        )
+        raise HTTPException(status_code=500, detail="Error during login.")
 
 
 @router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
