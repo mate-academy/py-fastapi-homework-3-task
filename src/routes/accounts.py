@@ -18,7 +18,7 @@ from schemas.accounts import (
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
-    LoginRequestSchema,
+    UserLoginRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
     RefreshTokenResponseSchema,
@@ -162,7 +162,7 @@ async def complete_password_reset(
 
 @router.post("/login/", response_model=UserLoginResponseSchema)
 async def login(
-        data: LoginRequestSchema,
+        data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
         settings: BaseAppSettings = Depends(get_settings)

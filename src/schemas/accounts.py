@@ -32,9 +32,12 @@ class PasswordResetCompleteRequestSchema(BaseModel):
 PasswordResetCompleteSchema = PasswordResetCompleteRequestSchema
 
 
-class LoginRequestSchema(BaseModel):
+class UserLoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
+
+
+LoginRequestSchema = UserLoginRequestSchema
 
 
 class UserLoginResponseSchema(BaseModel):
