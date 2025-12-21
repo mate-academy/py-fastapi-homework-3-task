@@ -26,6 +26,8 @@ from schemas.accounts import (
 from security.auth import get_jwt_auth_manager, JWTAuthManagerInterface
 from core.config import get_settings, BaseAppSettings
 
+from src.schemas.accounts import MessageResponseSchema
+
 router = APIRouter(tags=["Accounts"])
 
 
