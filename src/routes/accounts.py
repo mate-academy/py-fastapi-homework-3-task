@@ -136,14 +136,25 @@ async def complete_password_reset(
         data: PasswordResetCompleteRequestSchema,
         db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(PasswordResetTokenModel).join(UserModel).where(
-        UserModel.email == data.email,
+    user_stmt = select(UserModel).where(UserModel.email == data.email)
+    user_result = await db.execute(user_stmt)
+    user = user_result.scalar_one_or_none()
+
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
+
+    token_stmt = select(PasswordResetTokenModel).where(
+        PasswordResetTokenModel.user_id == user.id,
         PasswordResetTokenModel.token == data.token
     )
-    result = await db.execute(stmt)
-    token_record = result.scalar_one_or_none()
+    token_result = await db.execute(token_stmt)
+    token_record = token_result.scalar_one_or_none()
 
     if not token_record:
+        await db.execute(
+            delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
+        )
+        await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     expires_at = token_record.expires_at
@@ -153,13 +164,6 @@ async def complete_password_reset(
     if expires_at < datetime.now(timezone.utc):
         await db.delete(token_record)
         await db.commit()
-        raise HTTPException(status_code=400, detail="Invalid email or token.")
-
-    user_stmt = select(UserModel).where(UserModel.email == data.email)
-    user_result = await db.execute(user_stmt)
-    user = user_result.scalar_one_or_none()
-
-    if not user or not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
