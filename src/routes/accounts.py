@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from datetime import datetime, timezone
-from unittest.mock import patch
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
@@ -217,7 +216,7 @@ async def login(
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
 
-@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
+@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
         data: TokenRefreshRequestSchema,
         db: AsyncSession = Depends(get_db),
