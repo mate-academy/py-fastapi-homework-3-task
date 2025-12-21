@@ -6,6 +6,14 @@ class UserRegistrationRequestSchema(BaseModel):
     password: str
 
 
+class UserRegistrationResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+
+    class Config:
+        from_attributes = True
+
+
 class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
