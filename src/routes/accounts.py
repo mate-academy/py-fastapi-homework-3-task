@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from datetime import datetime, timezone
+from unittest.mock import patch
+from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
 from database.models.accounts import (
@@ -41,7 +43,10 @@ async def register(
         stmt = select(UserModel).where(UserModel.email == data.email)
         result = await db.execute(stmt)
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="User already exists.")
+            raise HTTPException(
+                status_code=409,
+                detail=f"A user with this email {data.email} already exists."
+            )
 
         group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
         group_result = await db.execute(group_stmt)
@@ -62,10 +67,10 @@ async def register(
         await db.refresh(new_user)
         return new_user
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except sqlalchemy.exc.SQLAlchemyError:
+        raise HTTPException(status_code=422, detail=str(e))
+    except SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="An error occurred during user creation.")
 
 
 @router.post("/activate/", response_model=MessageResponseSchema)
@@ -78,7 +83,7 @@ async def activate(
     existing_user = user_res.scalar_one_or_none()
 
     if existing_user and existing_user.is_active:
-        raise HTTPException(status_code=400, detail="User is already active.")
+        raise HTTPException(status_code=400, detail="User account is already active.")
 
     stmt = select(ActivationTokenModel).join(UserModel).where(
         UserModel.email == data.email,
@@ -161,7 +166,7 @@ async def complete_password_reset(
         user.password = data.password
         await db.delete(token_record)
         await db.commit()
-    except sqlalchemy.exc.SQLAlchemyError:
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
 
@@ -186,8 +191,9 @@ async def login(
         raise HTTPException(status_code=403, detail="User account is not activated.")
 
     try:
-        refresh_token = jwt_manager.create_refresh_token(data={"sub": str(user.id)})
-        access_token = jwt_manager.create_access_token(data={"sub": str(user.id)})
+        payload = {"user_id": user.id}
+        refresh_token = jwt_manager.create_refresh_token(data=payload)
+        access_token = jwt_manager.create_access_token(data=payload)
 
         db_refresh_token = RefreshTokenModel.create(
             user_id=user.id,
@@ -207,7 +213,7 @@ async def login(
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
 
-@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
         data: TokenRefreshRequestSchema,
         db: AsyncSession = Depends(get_db),
@@ -226,7 +232,7 @@ async def refresh_access_token(
         if not db_token:
             raise HTTPException(status_code=401, detail="Refresh token not found.")
 
-        user_id = payload.get("sub") or payload.get("user_id")
+        user_id = payload.get("user_id") or payload.get("sub")
         user_stmt = select(UserModel).where(UserModel.id == int(user_id))
         user_result = await db.execute(user_stmt)
         user = user_result.scalar_one_or_none()
@@ -234,9 +240,9 @@ async def refresh_access_token(
         if not user:
             raise HTTPException(status_code=404, detail="User not found.")
 
-        new_access_token = jwt_manager.create_access_token(data={"sub": str(user.id)})
+        new_access_token = jwt_manager.create_access_token(data={"user_id": user.id})
         return {"access_token": new_access_token}
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=404, detail="Not Found")
+        raise HTTPException(status_code=404, detail="User not found.")
