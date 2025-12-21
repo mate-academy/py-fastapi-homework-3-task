@@ -21,7 +21,7 @@ from schemas.accounts import (
     UserLoginRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
-    RefreshTokenResponseSchema,
+    TokenRefreshResponseSchema,
     MessageResponseSchema
 )
 from security.auth import get_jwt_auth_manager, JWTAuthManagerInterface
@@ -201,7 +201,7 @@ async def login(
         )
 
 
-@router.post("/api/v1/accounts/refresh/", response_model=RefreshTokenResponseSchema)
+@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
         data: TokenRefreshRequestSchema,
         db: AsyncSession = Depends(get_db),
