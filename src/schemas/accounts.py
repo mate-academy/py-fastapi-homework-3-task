@@ -23,10 +23,13 @@ class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
 
-class PasswordResetCompleteSchema(BaseModel):
+class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     password: str
+
+
+PasswordResetCompleteSchema = PasswordResetCompleteRequestSchema
 
 
 class LoginRequestSchema(BaseModel):

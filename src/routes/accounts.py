@@ -17,7 +17,7 @@ from schemas.accounts import (
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
-    PasswordResetCompleteSchema,
+    PasswordResetCompleteRequestSchema,
     LoginRequestSchema,
     TokenRefreshRequestSchema,
     TokenResponseSchema,
@@ -114,10 +114,10 @@ async def request_password_reset(
     return {"message": "If you are registered, you will receive an email with instructions."}
 
 
-@router.post("/reset-password/complete/")
+@router.post("/reset-password/complete/", response_model=MessageResponseSchema)
 async def complete_password_reset(
-        data: PasswordResetCompleteSchema,
-        db: AsyncSession = Depends(get_db)
+    data: PasswordResetCompleteRequestSchema,  # Онови тут
+    db: AsyncSession = Depends(get_db)
 ):
     stmt = select(PasswordResetTokenModel).join(UserModel).where(
         UserModel.email == data.email,
