@@ -1,6 +1,11 @@
 from pydantic import BaseModel, EmailStr
 
 
+class UserRegistrationRequestSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+
 class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
