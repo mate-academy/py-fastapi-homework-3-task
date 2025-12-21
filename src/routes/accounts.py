@@ -1,3 +1,4 @@
+import sqlalchemy
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
@@ -36,29 +37,35 @@ async def register(
         data: UserRegistrationRequestSchema,
         db: AsyncSession = Depends(get_db)
 ):
-    stmt = select(UserModel).where(UserModel.email == data.email)
-    result = await db.execute(stmt)
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="User already exists.")
+    try:
+        stmt = select(UserModel).where(UserModel.email == data.email)
+        result = await db.execute(stmt)
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=409, detail="User already exists.")
 
-    group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
-    group_result = await db.execute(group_stmt)
-    group = group_result.scalar_one()
+        group_stmt = select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+        group_result = await db.execute(group_stmt)
+        group = group_result.scalar_one()
 
-    new_user = UserModel.create(
-        email=data.email,
-        raw_password=data.password,
-        group_id=group.id
-    )
-    db.add(new_user)
-    await db.flush()
+        new_user = UserModel.create(
+            email=data.email,
+            raw_password=data.password,
+            group_id=group.id
+        )
+        db.add(new_user)
+        await db.flush()
 
-    activation_token = ActivationTokenModel(user_id=new_user.id)
-    db.add(activation_token)
+        activation_token = ActivationTokenModel(user_id=new_user.id)
+        db.add(activation_token)
 
-    await db.commit()
-    await db.refresh(new_user)
-    return new_user
+        await db.commit()
+        await db.refresh(new_user)
+        return new_user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except sqlalchemy.exc.SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/activate/", response_model=MessageResponseSchema)
@@ -66,6 +73,13 @@ async def activate(
         data: UserActivationRequestSchema,
         db: AsyncSession = Depends(get_db)
 ):
+    user_stmt = select(UserModel).where(UserModel.email == data.email)
+    user_res = await db.execute(user_stmt)
+    existing_user = user_res.scalar_one_or_none()
+
+    if existing_user and existing_user.is_active:
+        raise HTTPException(status_code=400, detail="User is already active.")
+
     stmt = select(ActivationTokenModel).join(UserModel).where(
         UserModel.email == data.email,
         ActivationTokenModel.token == data.token
@@ -74,7 +88,7 @@ async def activate(
     token_record = result.scalar_one_or_none()
 
     if not token_record:
-        raise HTTPException(status_code=400, detail="Invalid email or token.")
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     expires_at = token_record.expires_at
     if expires_at.tzinfo is None:
@@ -83,17 +97,13 @@ async def activate(
     if expires_at < datetime.now(timezone.utc):
         await db.delete(token_record)
         await db.commit()
-        raise HTTPException(status_code=400, detail="Token has expired.")
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    user_stmt = select(UserModel).where(UserModel.email == data.email)
-    user_result = await db.execute(user_stmt)
-    user = user_result.scalar_one()
-
-    user.is_active = True
+    existing_user.is_active = True
     await db.delete(token_record)
     await db.commit()
 
-    return {"message": "Account activated successfully."}
+    return {"message": "User account activated successfully."}
 
 
 @router.post("/password-reset/request/", response_model=MessageResponseSchema)
@@ -151,14 +161,14 @@ async def complete_password_reset(
         user.password = data.password
         await db.delete(token_record)
         await db.commit()
-    except Exception:
+    except sqlalchemy.exc.SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="An error occurred.")
+        raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
 
     return {"message": "Password reset successfully."}
 
 
-@router.post("/login/", response_model=UserLoginResponseSchema)
+@router.post("/login/", response_model=UserLoginResponseSchema, status_code=201)
 async def login(
         data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
@@ -193,7 +203,8 @@ async def login(
             "token_type": "bearer"
         }
     except Exception:
-        raise HTTPException(status_code=500, detail="Error during login.")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
 
 @router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
@@ -203,24 +214,29 @@ async def refresh_access_token(
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ):
     try:
-        payload = jwt_manager.decode_refresh_token(data.refresh_token)
+        try:
+            payload = jwt_manager.decode_refresh_token(data.refresh_token)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Token has expired.")
+
+        stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == data.refresh_token)
+        result = await db.execute(stmt)
+        db_token = result.scalar_one_or_none()
+
+        if not db_token:
+            raise HTTPException(status_code=401, detail="Refresh token not found.")
+
+        user_id = payload.get("sub") or payload.get("user_id")
+        user_stmt = select(UserModel).where(UserModel.id == int(user_id))
+        user_result = await db.execute(user_stmt)
+        user = user_result.scalar_one_or_none()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        new_access_token = jwt_manager.create_access_token(data={"sub": str(user.id)})
+        return {"access_token": new_access_token}
+    except HTTPException:
+        raise
     except Exception:
-        raise HTTPException(status_code=400, detail="Token has expired.")
-
-    stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == data.refresh_token)
-    result = await db.execute(stmt)
-    db_token = result.scalar_one_or_none()
-
-    if not db_token:
-        raise HTTPException(status_code=401, detail="Refresh token not found.")
-
-    user_id = payload.get("sub")
-    user_stmt = select(UserModel).where(UserModel.id == int(user_id))
-    user_result = await db.execute(user_stmt)
-    user = user_result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    new_access_token = jwt_manager.create_access_token(data={"sub": str(user.id)})
-    return {"access_token": new_access_token}
+        raise HTTPException(status_code=404, detail="Not Found")
