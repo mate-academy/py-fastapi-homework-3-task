@@ -19,14 +19,13 @@ from schemas.accounts import (
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
     LoginRequestSchema,
+    UserLoginResponseSchema,
     TokenRefreshRequestSchema,
-    TokenResponseSchema,
-    RefreshTokenResponseSchema
+    RefreshTokenResponseSchema,
+    MessageResponseSchema
 )
 from security.auth import get_jwt_auth_manager, JWTAuthManagerInterface
 from core.config import get_settings, BaseAppSettings
-
-from src.schemas.accounts import MessageResponseSchema
 
 router = APIRouter(tags=["Accounts"])
 
@@ -61,7 +60,7 @@ async def register(
     return new_user
 
 
-@router.post("/activate/")
+@router.post("/activate/", response_model=MessageResponseSchema)
 async def activate(
         data: UserActivationRequestSchema,
         db: AsyncSession = Depends(get_db)
@@ -96,7 +95,7 @@ async def activate(
     return {"message": "Account activated successfully."}
 
 
-@router.post("/password-reset/request/")
+@router.post("/password-reset/request/", response_model=MessageResponseSchema)
 async def request_password_reset(
         data: PasswordResetRequestSchema,
         db: AsyncSession = Depends(get_db)
@@ -118,8 +117,8 @@ async def request_password_reset(
 
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
 async def complete_password_reset(
-    data: PasswordResetCompleteRequestSchema,  # Онови тут
-    db: AsyncSession = Depends(get_db)
+        data: PasswordResetCompleteRequestSchema,
+        db: AsyncSession = Depends(get_db)
 ):
     stmt = select(PasswordResetTokenModel).join(UserModel).where(
         UserModel.email == data.email,
@@ -161,7 +160,7 @@ async def complete_password_reset(
     return {"message": "Password reset successfully."}
 
 
-@router.post("/login/", response_model=TokenResponseSchema)
+@router.post("/login/", response_model=UserLoginResponseSchema)
 async def login(
         data: LoginRequestSchema,
         db: AsyncSession = Depends(get_db),

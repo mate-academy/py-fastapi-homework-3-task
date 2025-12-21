@@ -37,14 +37,17 @@ class LoginRequestSchema(BaseModel):
     password: str
 
 
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str
-
-
-class TokenResponseSchema(BaseModel):
+class UserLoginResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+
+
+TokenResponseSchema = UserLoginResponseSchema
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    refresh_token: str
 
 
 class RefreshTokenResponseSchema(BaseModel):
