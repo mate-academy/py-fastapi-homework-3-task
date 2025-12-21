@@ -29,7 +29,7 @@ from schemas.accounts import (
     PasswordResetSchema,
     MessageResponseSchema,
     UserLoginRequestSchema,
-    RefreshTokenRequestSchema,
+    TokenRefreshRequestSchema,
 )
 
 from jose import JWTError, ExpiredSignatureError
@@ -108,7 +108,7 @@ async def activate_user(
     if not token_model or token_model.user.email != activation_data.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
+            detail="Invalid or expired activation token.",
         )
 
     expires_at = token_model.expires_at.replace(tzinfo=timezone.utc)
@@ -117,14 +117,14 @@ async def activate_user(
         await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
+            detail="Invalid or expired activation token.",
         )
 
     user = token_model.user
     if user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is already active."
+            detail="User account is already active.",
         )
 
     user.is_active = True
@@ -155,13 +155,13 @@ async def login_user(
     if not user or not user.verify_password(login_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password."
+            detail="Invalid email or password.",
         )
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is not activated."
+            detail="User account is not activated.",
         )
 
     try:
@@ -176,19 +176,23 @@ async def login_user(
     except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing the request."
+            detail="An error occurred while processing the request.",
         )
 
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
-        content={"access_token": access_token, "refresh_token": refresh_token},
+        content={
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        },
     )
 
 
 # ---------------- Refresh ----------------
 @router.post("/refresh/", status_code=status.HTTP_200_OK)
 async def refresh_access_token(
-    refresh_data: RefreshTokenRequestSchema,
+    refresh_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
@@ -204,21 +208,18 @@ async def refresh_access_token(
             jwt_manager.decode_refresh_token(refresh_data.refresh_token)
         except TokenExpiredError:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Token has expired."
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Token has expired."
             )
         except InvalidTokenError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Refresh token not found."
+                detail="Refresh token not found.",
             )
 
         # если JWT валиден, но в БД нет
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
         )
-
 
     # Проверяем срок действия токена в базе
     expires_at = token_model.expires_at.replace(tzinfo=timezone.utc)
@@ -226,8 +227,7 @@ async def refresh_access_token(
         await db.delete(token_model)
         await db.commit()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token has expired."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token has expired."
         )
 
     # Проверяем пользователя
@@ -237,8 +237,7 @@ async def refresh_access_token(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
     # Генерация новых токенов
@@ -253,12 +252,12 @@ async def refresh_access_token(
     except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing the request."
+            detail="An error occurred while processing the request.",
         )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"access_token": access_token, "refresh_token": new_refresh_token},
+        content={"access_token": access_token},
     )
 
 
@@ -327,8 +326,7 @@ async def reset_password(
 
     if not user or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
         )
 
     token_model = user.password_reset_token
@@ -337,8 +335,7 @@ async def reset_password(
             await db.delete(token_model)
             await db.commit()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
         )
 
     expires_at = token_model.expires_at.replace(tzinfo=timezone.utc)
