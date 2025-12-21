@@ -17,5 +17,4 @@ from schemas.accounts import (
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
     PasswordResetRequestSchema,
-    PasswordResetSchema,
 )
