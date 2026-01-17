@@ -24,7 +24,7 @@ class Token(BaseModel):
 
 
 class ActivateRequest(BaseModel):
-    email: str
+    email: EmailStr
     token: str
 
 
@@ -66,4 +66,4 @@ class RefreshTokenRequest(BaseModel):
 
 
 class RefreshTokenResponse(BaseModel):
-    message: str
+    access_token: str
