@@ -22,6 +22,7 @@ class UserActivationRequestSchema(BaseModel):
 class MessageResponseSchema(BaseModel):
     message: str
 
+
 class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
@@ -30,6 +31,7 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     new_password: str = Field(..., min_length=8)
+
 
 class UserLoginRequestSchema(BaseModel):
     email: EmailStr
@@ -44,6 +46,7 @@ class UserLoginResponseSchema(BaseModel):
 
 class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
+
 
 class TokenRefreshResponseSchema(BaseModel):
     access_token: str
