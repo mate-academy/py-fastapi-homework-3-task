@@ -1,5 +1,4 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 
 
 class UserCreate(BaseModel):
@@ -10,21 +9,36 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: EmailStr
-    is_active: bool
 
     class Config:
         from_attributes = True
 
 
-class Token(BaseModel):
+class AccountActivationRequest(BaseModel):
+    email: EmailStr
+    token: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetCompleteRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
-
-
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str
-
-
-class TokenRefreshResponseSchema(BaseModel):
-    access_token: str
