@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from database import get_db
 from security import token_manager
-from src.database.models.accounts import (
+from database.models.accounts import (
     UserModel, UserGroupModel, UserGroupEnum,
     ActivationTokenModel, PasswordResetTokenModel, RefreshTokenModel
 )
