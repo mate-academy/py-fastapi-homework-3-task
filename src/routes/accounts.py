@@ -9,17 +9,19 @@ from src.database.models.accounts import (
     ActivationTokenModel, PasswordResetTokenModel, RefreshTokenModel
 )
 from schemas.accounts import (
-    UserCreate, UserOut, AccountActivationRequest,
-    PasswordResetRequest, PasswordResetCompleteRequest,
-    LoginRequest, TokenRefreshRequest, TokenResponse
+    UserRegistrationRequestSchema, UserRegistrationResponseSchema,
+    UserActivationRequestSchema, MessageResponseSchema,
+    PasswordResetRequestSchema, PasswordResetCompleteRequestSchema,
+    UserLoginRequestSchema, UserLoginResponseSchema,
+    TokenRefreshRequestSchema, TokenRefreshResponseSchema
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-# 1. Registration
-@router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
+# 1. Implementation User Registration Endpoint
+@router.post("/register", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
+async def register_user(user_in: UserRegistrationRequestSchema, db: Session = Depends(get_db)):
     if db.query(UserModel).filter(UserModel.email == user_in.email).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -44,9 +46,9 @@ async def register_user(user_in: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-# 2. Activation
-@router.post("/activate")
-async def activate_account(data: AccountActivationRequest, db: Session = Depends(get_db)):
+# 2. Implementation User Account Activation Endpoint
+@router.post("/activate", response_model=MessageResponseSchema)
+async def activate_account(data: UserActivationRequestSchema, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.email == data.email).first()
 
     if not user:
@@ -69,8 +71,9 @@ async def activate_account(data: AccountActivationRequest, db: Session = Depends
     return {"message": "User account activated successfully."}
 
 
-@router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, db: Session = Depends(get_db)):
+# 3. Implementation User Login Endpoint
+@router.post("/login", response_model=UserLoginResponseSchema)
+async def login(data: UserLoginRequestSchema, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.email == data.email).first()
 
     if not user or not user.verify_password(data.password):
@@ -86,24 +89,32 @@ async def login(data: LoginRequest, db: Session = Depends(get_db)):
     db.add(db_refresh)
     db.commit()
 
-    return {"access_token": access_token, "refresh_token": refresh_token_str, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token_str,
+        "token_type": "bearer"
+    }
 
 
-# 4. Refresh Token (JSON payload)
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_access(data: TokenRefreshRequest, db: Session = Depends(get_db)):
+# 4. Implementation Access Token Refresh Endpoint
+@router.post("/refresh", response_model=TokenRefreshResponseSchema)
+async def refresh_access(data: TokenRefreshRequestSchema, db: Session = Depends(get_db)):
     db_token = db.query(RefreshTokenModel).filter(RefreshTokenModel.token == data.refresh_token).first()
 
     if not db_token or db_token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token.")
 
     new_access = token_manager.create_access_token(subject=db_token.user.email)
-    return {"access_token": new_access, "refresh_token": data.refresh_token, "token_type": "bearer"}
+    return {
+        "access_token": new_access,
+        "refresh_token": data.refresh_token,
+        "token_type": "bearer"
+    }
 
 
-# 5. Password Reset Request
-@router.post("/password-reset/request")
-async def request_reset(data: PasswordResetRequest, db: Session = Depends(get_db)):
+# 5. Implementation Password Reset Token Request Endpoint
+@router.post("/password-reset/request", response_model=MessageResponseSchema)
+async def request_reset(data: PasswordResetRequestSchema, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.email == data.email).first()
 
     if user and user.is_active:
@@ -115,9 +126,9 @@ async def request_reset(data: PasswordResetRequest, db: Session = Depends(get_db
     return {"message": "If you are registered, you will receive an email with instructions."}
 
 
-# 6. Password Reset Complete
-@router.post("/password-reset/complete")
-async def complete_reset(data: PasswordResetCompleteRequest, db: Session = Depends(get_db)):
+# 6. Implementation Password Reset Completion Endpoint
+@router.post("/password-reset/complete", response_model=MessageResponseSchema)
+async def complete_reset(data: PasswordResetCompleteRequestSchema, db: Session = Depends(get_db)):
     user = db.query(UserModel).filter(UserModel.email == data.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")

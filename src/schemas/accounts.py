@@ -1,12 +1,12 @@
 from pydantic import BaseModel, EmailStr, Field
 
 
-class UserCreate(BaseModel):
+class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
 
 
-class UserOut(BaseModel):
+class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
 
@@ -14,31 +14,38 @@ class UserOut(BaseModel):
         from_attributes = True
 
 
-class AccountActivationRequest(BaseModel):
+class UserActivationRequestSchema(BaseModel):
     email: EmailStr
     token: str
 
 
-class PasswordResetRequest(BaseModel):
+class MessageResponseSchema(BaseModel):
+    message: str
+
+class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
 
-class PasswordResetCompleteRequest(BaseModel):
+class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     new_password: str = Field(..., min_length=8)
 
-
-class LoginRequest(BaseModel):
+class UserLoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
 
-class TokenRefreshRequest(BaseModel):
+class UserLoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
 
-
-class TokenResponse(BaseModel):
+class TokenRefreshResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
