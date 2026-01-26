@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_db
-from src.security import token_manager
-from src.database.models.accounts import (
+from database import get_db
+from security import token_manager
+from database.models.accounts import (
     UserModel, UserGroupModel, UserGroupEnum,
     ActivationTokenModel, PasswordResetTokenModel, RefreshTokenModel
 )
