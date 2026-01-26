@@ -133,6 +133,7 @@ async def request_reset(data: PasswordResetRequestSchema, db: Session = Depends(
 
     return {"message": "If you are registered, you will receive an email with instructions."}
 
+
 # 6. Implementation Password Reset Completion Endpoint
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
 async def complete_reset(data: PasswordResetCompleteRequestSchema, db: Session = Depends(get_db)):
