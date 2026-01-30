@@ -177,7 +177,8 @@ async def password_reset_complete(
 
     except SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resetting the password.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred while resetting the password.")
 
 
 @router.post("/login/", response_model=UserLoginResponseSchema, status_code=201)
@@ -214,7 +215,8 @@ async def login_user(
 
     except SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while processing the request.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred while processing the request.")
 
 
 @router.post("/refresh/", response_model=TokenRefreshResponseSchema)
