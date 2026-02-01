@@ -91,18 +91,18 @@ async def register(
 @router.post("/activate/", response_model=MessageResponseSchema)
 async def activate_account(db: Annotated[AsyncSession, Depends(get_db)],
                            user_data: AccountActivationRequestSchema):
-    user_db = await get_user_by_email(db, user_data.email)
-    if not user_db:
+    user = await get_user_by_email(db, user_data.email)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token.",
         )
-    if user_db.is_active:
+    if user.is_active:
         raise HTTPException(status_code=400,
                             detail="User account is already active.")
     result = await db.execute(
         select(ActivationTokenModel).where(
-            ActivationTokenModel.user_id == user_db.id,
+            ActivationTokenModel.user_id == user.id,
             ActivationTokenModel.token == user_data.token,
         )
     )
@@ -122,7 +122,7 @@ async def activate_account(db: Annotated[AsyncSession, Depends(get_db)],
         )
 
     try:
-        user_db.is_active = True
+        user.is_active = True
         await db.delete(activation_token)
         await db.commit()
     except SQLAlchemyError:
@@ -161,14 +161,14 @@ async def password_reset_request(db: Annotated[AsyncSession, Depends(get_db)],
 async def password_reset_completion(
         db: Annotated[AsyncSession, Depends(get_db)],
         user_data: PasswordChangingRequestScheme):
-    user_db = await get_user_by_email(db, user_data.email)
+    user = await get_user_by_email(db, user_data.email)
 
-    if not user_db or not user_db.is_active:
+    if not user or not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     result = await db.execute(
         select(PasswordResetTokenModel).where(
-            PasswordResetTokenModel.user_id == user_db.id,
+            PasswordResetTokenModel.user_id == user.id,
             PasswordResetTokenModel.token == user_data.token,
         )
     )
@@ -176,7 +176,7 @@ async def password_reset_completion(
     if not reset_token:
         await db.execute(
             delete(PasswordResetTokenModel).where(
-                PasswordResetTokenModel.user_id == user_db.id
+                PasswordResetTokenModel.user_id == user.id
             )
         )
         await db.commit()
@@ -195,7 +195,7 @@ async def password_reset_completion(
             detail="Invalid email or token.",
         )
     try:
-        user_db.password = user_data.password
+        user.password = user_data.password
         await db.delete(reset_token)
         await db.commit()
     except SQLAlchemyError:
