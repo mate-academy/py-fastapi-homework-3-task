@@ -20,12 +20,12 @@ from schemas.accounts import (
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
-    PasswordResetCompleteSchema,
+    PasswordResetCompleteRequestSchema,
     UserLoginRequestSchema,
-    LoginResponseSchema,
-    RefreshTokenRequestSchema,
+    UserLoginResponseSchema,
     MessageResponseSchema,
-    AccessTokenResponseSchema,
+    TokenRefreshResponseSchema,
+    TokenRefreshRequestSchema,
 )
 from security.passwords import hash_password, verify_password
 from security.interfaces import JWTAuthManagerInterface
@@ -136,7 +136,7 @@ async def request_password_reset(
     return {"message": "If you are registered, you will receive an email with instructions."}
 
 
-@router.post("/login/", response_model=LoginResponseSchema)
+@router.post("/login/", response_model=UserLoginResponseSchema)
 async def login(
     data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
@@ -158,12 +158,13 @@ async def login(
     return {
         "access_token": jwt_manager.create_access_token(user.id),
         "refresh_token": refresh,
+        "token_type": "bearer",
     }
 
 
-@router.post("/refresh/", response_model=AccessTokenResponseSchema)
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
-    data: RefreshTokenRequestSchema,
+    data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
@@ -184,3 +185,25 @@ async def refresh_access_token(
     return {
         "access_token": jwt_manager.create_access_token(user.id)
     }
+
+
+@router.post("/reset-password/complete/", response_model=MessageResponseSchema)
+async def complete_password_reset(
+    body: PasswordResetCompleteRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager = Depends(get_jwt_auth_manager),
+):
+    """
+    Complete password reset by verifying token and updating password.
+    """
+    user = await get_user_by_email(db, body.email)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if not jwt_manager.verify_reset_token(body.token):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+
+    user.password = hash_password(body.password)
+    await db.commit()
+
+    return {"message": "Password reset successful"}
