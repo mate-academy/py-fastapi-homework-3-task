@@ -4,7 +4,6 @@ from typing import cast, Annotated
 from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError
-from security.passwords import hash_password
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -212,31 +211,40 @@ async def request_password_reset_complete(
     )
     db_user = result.scalar_one_or_none()
 
-    generic_error = HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail="Invalid email or token."
-    )
-
     if not db_user or not db_user.is_active:
-        raise generic_error
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
 
     existed_token = db_user.password_reset_token
 
     if not existed_token or existed_token.token != user_data.token:
-        raise generic_error
+        if existed_token:
+            await db.delete(existed_token)
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
 
-    if existed_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
-            timezone.utc):
+    if existed_token.expires_at.timestamp() < datetime.now(
+            timezone.utc).timestamp():
         await db.delete(existed_token)
         await db.commit()
-        raise generic_error
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
 
     try:
-        db_user.password = hash_password(user_data.password)
-
+        db_user.password = user_data.password
         await db.delete(existed_token)
         await db.commit()
-        return MessageResponseSchema(message="Password reset successfully.")
+        return MessageResponseSchema(
+            message="Password reset successfully."
+        )
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
@@ -247,13 +255,14 @@ async def request_password_reset_complete(
 
 @router.post(
     "/login/",
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     response_model=UserLoginResponseSchema
 )
 async def login_user(
         user_data: UserLoginRequestSchema,
         db: Annotated[AsyncSession, Depends(get_db)],
-        jwt_manager: Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
+        jwt_manager: Annotated[
+            JWTAuthManagerInterface, Depends(get_jwt_auth_manager)],
         settings: Annotated[BaseAppSettings, Depends(get_settings)],
 ) -> UserLoginResponseSchema:
     result = await db.execute(
