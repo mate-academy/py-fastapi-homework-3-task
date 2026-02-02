@@ -1,41 +1,37 @@
 from datetime import datetime, timezone
-from typing import cast, Annotated
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, status, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
-from jose import JWTError
+from config import BaseAppSettings, get_jwt_auth_manager, get_settings
+from database import (
+    ActivationTokenModel,
+    PasswordResetTokenModel,
+    RefreshTokenModel,
+    UserGroupEnum,
+    UserGroupModel,
+    UserModel,
+    get_db,
+)
+from exceptions import BaseSecurityError
+from fastapi import APIRouter, Depends, HTTPException, status
+from schemas import (
+    MessageResponseSchema,
+    PasswordResetCompleteRequestSchema,
+    PasswordResetRequestSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema,
+    UserActivationRequestSchema,
+    UserLoginRequestSchema,
+    UserLoginResponseSchema,
+    UserRegistrationRequestSchema,
+    UserRegistrationResponseSchema,
+)
+from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-
-from config import get_jwt_auth_manager, get_settings, BaseAppSettings
-from database import (
-    get_db,
-    UserModel,
-    UserGroupModel,
-    UserGroupEnum,
-    ActivationTokenModel,
-    PasswordResetTokenModel,
-    RefreshTokenModel
-)
-from exceptions import BaseSecurityError
-from security.interfaces import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
-from schemas import (
-    UserRegistrationRequestSchema,
-    UserRegistrationResponseSchema,
-    UserActivationRequestSchema,
-    MessageResponseSchema,
-    PasswordResetRequestSchema,
-    PasswordResetCompleteRequestSchema,
-    UserLoginResponseSchema,
-    UserLoginRequestSchema,
-    TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema,
-)
-
-from src.exceptions.security import TokenExpiredError, InvalidTokenError
+from src.exceptions.security import InvalidTokenError, TokenExpiredError
 
 router = APIRouter()
 
@@ -105,16 +101,29 @@ async def activate_user(
         user_data: UserActivationRequestSchema,
         db: Annotated[AsyncSession, Depends(get_db)],
 ) -> MessageResponseSchema:
-    db_user = await db.scalar(
-        select(UserModel)
-        .where(UserModel.email == user_data.email)
-        .options(joinedload(UserModel.activation_token))
+    result = await db.execute(
+        select(ActivationTokenModel)
+        .where(ActivationTokenModel.token == user_data.token)
+        .options(joinedload(ActivationTokenModel.user))
     )
-    if not db_user:
+    token_obj = result.scalar_one_or_none()
+
+    is_valid = True
+    if not token_obj:
+        is_valid = False
+    elif token_obj.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
+            timezone.utc):
+        is_valid = False
+    elif token_obj.user.email != user_data.email:
+        is_valid = False
+
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"A user with this email {user_data.email} not exists.",
+            detail="Invalid or expired activation token."
         )
+
+    db_user = token_obj.user
 
     if db_user.is_active:
         raise HTTPException(
@@ -122,23 +131,9 @@ async def activate_user(
             detail="User account is already active."
         )
 
-    user_token = db_user.activation_token
-    if not user_token or user_token.token != user_data.token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
-        )
-
-    if user_token.expires_at.timestamp() < datetime.now(
-            timezone.utc).timestamp():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired activation token."
-        )
-
     try:
         db_user.is_active = True
-        await db.delete(user_token)
+        await db.delete(token_obj)
         await db.commit()
     except Exception:
         await db.rollback()
@@ -239,7 +234,7 @@ async def request_password_reset_complete(
         )
 
     try:
-        db_user.password = user_data.password
+        db_user.hashed_password = hash_password(user_data.password)
         await db.delete(existed_token)
         await db.commit()
         return MessageResponseSchema(

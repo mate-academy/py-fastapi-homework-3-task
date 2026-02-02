@@ -21,7 +21,8 @@ class UserRegistrationRequestSchema(UserModelBase):
                 "Password must contain at least one uppercase letter.")
 
         if not re.search(r"[a-z]", value):
-            raise ValueError("Password must contain at least one lower letter.")
+            raise ValueError(
+                "Password must contain at least one lower letter.")
 
         if not re.search(r"\d", value):
             raise ValueError("Password must contain at least one digit.")
@@ -51,9 +52,8 @@ class PasswordResetRequestSchema(UserModelBase):
     pass
 
 
-class PasswordResetCompleteRequestSchema(UserModelBase):
+class PasswordResetCompleteRequestSchema(UserRegistrationRequestSchema):
     token: str
-    password: str
 
 
 class UserLoginResponseSchema(BaseModel):
