@@ -190,20 +190,53 @@ async def refresh_access_token(
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
 async def complete_password_reset(
     body: PasswordResetCompleteRequestSchema,
-    db: AsyncSession = Depends(get_db),
-    jwt_manager = Depends(get_jwt_auth_manager),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Complete password reset by verifying token and updating password.
+    Complete password reset by verifying the token and updating the user's password.
     """
-    user = await get_user_by_email(db, body.email)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    try:
+        user = await db.scalar(select(UserModel).where(UserModel.email == body.email))
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not found or inactive"
+            )
 
-    if not jwt_manager.verify_reset_token(body.token):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+        token_entry = await db.scalar(
+            select(PasswordResetTokenModel)
+            .where(
+                PasswordResetTokenModel.user_id == user.id,
+                PasswordResetTokenModel.token == body.token
+            )
+        )
+        if not token_entry:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired token"
+            )
 
-    user.password = hash_password(body.password)
-    await db.commit()
+        if token_entry.expires_at < datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token has expired"
+            )
 
-    return {"message": "Password reset successful"}
+        user.hashed_password = hash_password(body.password)
+        await db.commit()
+
+        await db.execute(
+            delete(PasswordResetTokenModel).where(PasswordResetTokenModel.id == token_entry.id)
+        )
+        await db.commit()
+
+        return {"message": "Password reset successful"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
