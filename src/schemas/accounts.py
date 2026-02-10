@@ -66,24 +66,5 @@ class TokenRefreshResponseSchema(BaseModel):
     access_token: str
 
 
-class UserLoginRequestSchema(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class UserLoginResponseSchema(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str
-
-
-class TokenRefreshResponseSchema(BaseModel):
-    access_token: str
-
-
 class MessageResponseSchema(BaseModel):
     message: str

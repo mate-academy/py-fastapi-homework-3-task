@@ -283,7 +283,7 @@ async def login_user(
 
         new_refresh = models.RefreshTokenModel.create(
             user_id=user.id,
-            days_valid=30,
+            days_valid=settings.LOGIN_TIME_DAYS,
             token=refresh_token,
         )
         db.add(new_refresh)
