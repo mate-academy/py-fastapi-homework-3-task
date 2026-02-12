@@ -67,7 +67,7 @@ class JWTAuthManager(JWTAuthManagerInterface):
                 token, self._secret_key_access, algorithms=[self._algorithm]
             )
         except ExpiredSignatureError:
-            raise TokenExpiredError
+            raise TokenExpiredError(detail="Token has expired.")
         except JWTError:
             raise InvalidTokenError
 
@@ -80,7 +80,7 @@ class JWTAuthManager(JWTAuthManagerInterface):
                 token, self._secret_key_refresh, algorithms=[self._algorithm]
             )
         except ExpiredSignatureError:
-            raise TokenExpiredError
+            raise TokenExpiredError(detail="Token has expired.")
         except JWTError as error:
             print(error)
             raise InvalidTokenError

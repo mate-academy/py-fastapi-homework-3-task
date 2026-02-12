@@ -3,6 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
+from jose import JWTError, ExpiredSignatureError
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,7 +20,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
-from exceptions import BaseSecurityError
+from exceptions import BaseSecurityError, TokenExpiredError
 from security.interfaces import JWTAuthManagerInterface
 
 from database import models
@@ -97,7 +98,6 @@ async def register_user(
         return UserRegistrationResponseSchema(
             id=new_user.id,
             email=new_user.email,
-            activation_token=activation_token.token,
         )
 
     except Exception as e:
@@ -252,7 +252,7 @@ async def complete_password_reset(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def login_user(
     data: UserLoginRequestSchema,
@@ -309,41 +309,49 @@ async def login_user(
     status_code=status.HTTP_200_OK,
 )
 async def refresh_access_token(
-    data: TokenRefreshRequestSchema,
+    payload: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     try:
-        payload = jwt_manager.decode_refresh_token(data.refresh_token)
+        decoded = jwt_manager.decode_refresh_token(payload.refresh_token)
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token payload."
-        )
+        # Проверяем текст ошибки
+        if "expired" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token has expired.",
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token.",
+            )
 
     result = await db.execute(
         select(models.RefreshTokenModel).where(
-            models.RefreshTokenModel.token == data.refresh_token
+            models.RefreshTokenModel.token == payload.refresh_token
         )
     )
-    token_record = result.scalars().first()
-    if not token_record:
+    refresh_token = result.scalars().first()
+
+    if not refresh_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
         )
 
     result = await db.execute(
-        select(models.UserModel).where(models.UserModel.id == user_id)
+        select(models.UserModel).where(models.UserModel.id == decoded["user_id"])
     )
     user = result.scalars().first()
+
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
         )
 
-    new_access_token = jwt_manager.create_access_token({"user_id": user.id})
+    access_token = jwt_manager.create_access_token({"user_id": decoded["user_id"]})
 
-    return TokenRefreshResponseSchema(access_token=new_access_token)
+    return TokenRefreshResponseSchema(access_token=access_token)

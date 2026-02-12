@@ -76,11 +76,17 @@ class UserModel(Base):
     )
 
     activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
-        "ActivationTokenModel", back_populates="user", cascade="all, delete-orphan"
+        "ActivationTokenModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
-        "PasswordResetTokenModel", back_populates="user", cascade="all, delete-orphan"
+        "PasswordResetTokenModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
@@ -88,7 +94,10 @@ class UserModel(Base):
     )
 
     profile: Mapped[Optional["UserProfileModel"]] = relationship(
-        "UserProfileModel", back_populates="user", cascade="all, delete-orphan"
+        "UserProfileModel",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     def __repr__(self):
@@ -153,8 +162,6 @@ class UserProfileModel(Base):
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     user: Mapped[UserModel] = relationship("UserModel", back_populates="profile")
-
-
 
     def __repr__(self):
         return (

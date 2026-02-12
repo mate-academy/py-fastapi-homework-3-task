@@ -29,7 +29,6 @@ class UserRegistrationRequestSchema(BaseModel):
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
-    activation_token: Optional[str] = None
 
 
 class UserActivationRequestSchema(BaseModel):
