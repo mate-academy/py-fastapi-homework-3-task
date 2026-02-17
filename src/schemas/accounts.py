@@ -1,6 +1,5 @@
 import re
 
-from fastapi import HTTPException
 from pydantic import (
     BaseModel,
     EmailStr,
@@ -8,7 +7,6 @@ from pydantic import (
     Field,
     ConfigDict
 )
-from starlette import status
 
 
 # Write your code here

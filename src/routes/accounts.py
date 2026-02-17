@@ -54,8 +54,7 @@ async def get_user_by_email(
 )
 async def register_user(
         user: UserRegistrationRequestSchema,
-        db: AsyncSession = Depends(get_db),
-        auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        db: AsyncSession = Depends(get_db)
 ):
     db_user = await get_user_by_email(email=user.email, db=db)
     if db_user:
@@ -198,7 +197,7 @@ async def password_reset_complete(
         )
 
     try:
-        db_user.password = request_data.password
+        db_user.password = hash_password(request_data.password)
         await db.delete(db_token)
         await db.commit()
         await db.refresh(db_user)
