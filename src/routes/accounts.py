@@ -197,7 +197,7 @@ async def password_reset_complete(
         )
 
     try:
-        db_user.password = hash_password(request_data.password)
+        db_user._hashed_password = hash_password(request_data.password)
         await db.delete(db_token)
         await db.commit()
         await db.refresh(db_user)
