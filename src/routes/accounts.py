@@ -68,12 +68,19 @@ async def register_user(
             select(UserGroupModel).where(
                 UserGroupModel.name == UserGroupEnum.USER)
         )
+        if not user_group:
+            user_group = UserGroupModel(name=UserGroupEnum.USER)
+            db.add(user_group)
+            await db.commit()
+            await db.refresh(user_group)
+
         new_user = UserModel.create(
             email=user.email,
             raw_password=user.password,
             group_id=user_group.id
         )
         new_user.is_active = False
+
         db.add(new_user)
         await db.flush()
         activation_token = ActivationTokenModel(user_id=new_user.id)
@@ -110,12 +117,13 @@ async def user_activate(
         )
     db_token = await db.scalar(
         select(ActivationTokenModel).where(
-            ActivationTokenModel.token == request.token
+            ActivationTokenModel.user_id == db_user.id
         )
     )
 
     if (
             not db_token
+            or db_token.token != request.token
             or cast(datetime, db_token.expires_at)
             .replace(tzinfo=timezone.utc) <= datetime.now(timezone.utc)
     ):
@@ -166,7 +174,7 @@ async def password_reset_complete(
         db: AsyncSession = Depends(get_db)
 ):
     db_user = await get_user_by_email(email=request_data.email, db=db)
-    if not db_user:
+    if not db_user or not db_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email or token."
@@ -257,7 +265,8 @@ async def user_login(
 
     return {
         "access_token": access_token,
-        "refresh_token": db_token.token
+        "refresh_token": db_token.token,
+        "token_type": "bearer"
     }
 
 
@@ -266,13 +275,12 @@ async def user_login(
     response_model=TokenRefreshResponseSchema
 )
 async def token_refresh(
-        response_data: TokenRefreshRequestSchema,
+        request_data: TokenRefreshRequestSchema,
         db: AsyncSession = Depends(get_db),
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
-    print(response_data)
     try:
-        jwt_manager.decode_refresh_token(response_data.refresh_token)
+        decoded = jwt_manager.decode_refresh_token(request_data.refresh_token)
 
     except TokenExpiredError:
         raise HTTPException(
@@ -286,7 +294,7 @@ async def token_refresh(
         )
 
     stmt_token = select(RefreshTokenModel).where(
-        RefreshTokenModel.token == response_data.refresh_token
+        RefreshTokenModel.token == request_data.refresh_token
     )
     db_token = await db.scalar(stmt_token)
 
@@ -312,6 +320,11 @@ async def token_refresh(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
+        )
+    if decoded.get("user_id") != db_token.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token ownership."
         )
     access_token = jwt_manager.create_access_token(
         data={"sub": db_user.email, "user_id": db_user.id}

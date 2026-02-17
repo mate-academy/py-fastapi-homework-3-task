@@ -1,6 +1,6 @@
 services:
   db:
-    image: 'postgres:14.21-alpine3.23'
+    image: 'postgres:14.21-alpine'
     container_name: postgres_theater
     env_file:
       - .env

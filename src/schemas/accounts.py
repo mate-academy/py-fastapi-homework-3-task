@@ -20,33 +20,20 @@ class UserRegistrationRequestSchema(UserBase):
     password: str = Field()
 
     @field_validator("password")
-    @classmethod
     def validate_password_complexity(cls, value: str) -> str:
         if len(value) < 8:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least 8 characters.",
-            )
+            raise ValueError("Password must contain at least 8 characters.")
         if not re.search(r"[A-Z]", value):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least one uppercase letter."
-            )
+            raise ValueError("Password must contain at least one uppercase letter.")
         if not re.search(r"[a-z]", value):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least one lower letter."
-            )
+            raise ValueError("Password must contain at least one lower letter.")
         if not re.search(r"\d", value):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least one digit."
-            )
+            raise ValueError("Password must contain at least one digit.")
         if not re.search(r"[\W_]", value):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Password must contain at least one special character: @, $, "
-                "!, %, *, ?, #, &.")
+            raise ValueError(
+                "Password must contain at least one special character: @, $, "
+                "!, %, *, ?, #, &."
+            )
         return value
 
 
@@ -76,7 +63,7 @@ class UserLoginResponseSchema(BaseModel):
 
 
 class UserLoginRequestSchema(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
