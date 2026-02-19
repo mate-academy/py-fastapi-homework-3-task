@@ -51,16 +51,15 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalar_one_or_none()
 
 
-async def get_activation_token_by_id(db: AsyncSession, token_id: int):
-    stmt = select(ActivationTokenModel).where(ActivationTokenModel.id == token_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+# async def get_activation_token_by_id(db: AsyncSession, token_id: int):
+#     stmt = select(ActivationTokenModel).where(ActivationTokenModel.id == token_id)
+#     result = await db.execute(stmt)
+#     return result.scalar_one_or_none()
 
 
 async def delete_activation_token(db: AsyncSession, token: ActivationTokenModel):
     await db.delete(token)
     await db.commit()
-    return HTTPException(status_code=400)
 
 
 async def validate_activation_token(user: UserModel, token: str):
@@ -106,7 +105,7 @@ async def create_password_reset_token(db: AsyncSession, user: UserModel):
 
 async def validate_reset_token(user: UserModel, token: str):
     if not user.password_reset_token:
-        raise HTTPException(status_code=404, detail="Token not found in db.")
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
     if user.password_reset_token.expires_at.tzinfo is None:
         user.password_reset_token.expires_at = (
             user.password_reset_token.expires_at.replace(tzinfo=timezone.utc)

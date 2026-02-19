@@ -39,7 +39,7 @@ async def activate_user_endpoint(
     db_user = await crud_accounts.get_user_by_email(db=db, email=user_data.email)
 
     if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=400, detail="Email or token is incorrect")
 
     validate_token = await crud_accounts.validate_activation_token(
         user=db_user, token=user_data.token
@@ -47,9 +47,7 @@ async def activate_user_endpoint(
 
     if validate_token:
         user = await crud_accounts.check_and_change_user_status(db=db, user=db_user)
-        activation_token = await crud_accounts.get_activation_token_by_id(
-            db=db, token_id=user.activation_token.id
-        )
+        activation_token = user.activation_token
 
         await crud_accounts.delete_activation_token(db=db, token=activation_token)
         return {"message": "User account activated successfully."}
