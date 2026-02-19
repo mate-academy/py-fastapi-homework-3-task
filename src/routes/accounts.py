@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_jwt_auth_manager
 from database import get_db
-from exceptions import TokenExpiredError
+from exceptions import TokenExpiredError, InvalidTokenError
 
 from security.interfaces import JWTAuthManagerInterface
 from schemas import accounts as schemas_accounts
@@ -150,6 +150,8 @@ async def get_access_token_endpoint(
         decode_token = jwt_manager.decode_refresh_token(token=user_data.refresh_token)
     except TokenExpiredError:
         raise HTTPException(status_code=400, detail="Token has expired.")
+    except InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Invalid token")
 
     check_exist_token_in_db = await crud_accounts.check_exist_refresh_token_in_db(
         db=db, refresh_token=user_data.refresh_token
