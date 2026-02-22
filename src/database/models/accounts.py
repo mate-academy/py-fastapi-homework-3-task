@@ -2,6 +2,7 @@ import enum
 from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
 
+from pydantic import EmailStr
 from sqlalchemy import (
     ForeignKey,
     String,
@@ -54,7 +55,7 @@ class UserModel(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[EmailStr] = mapped_column(String(255), unique=True, nullable=False, index=True)
     _hashed_password: Mapped[str] = mapped_column("hashed_password", String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(

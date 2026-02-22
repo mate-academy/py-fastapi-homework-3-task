@@ -7,13 +7,13 @@ from schemas.movies import (
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,
-    UserRegistrationResponseSchema,
-    UserActivationRequestSchema,
+    RefreshTokenResponseSchema,
+    UserResponseSchema,
+    ActivateUserRequestSchema,
     MessageResponseSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
-    UserLoginResponseSchema,
-    UserLoginRequestSchema,
-    TokenRefreshRequestSchema,
-    TokenRefreshResponseSchema
+    LoginRequestSchema,
+    LoginResponseSchema,
+    RefreshTokenRequestSchema,
 )
