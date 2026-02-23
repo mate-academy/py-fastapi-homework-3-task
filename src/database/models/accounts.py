@@ -121,6 +121,10 @@ class UserModel(Base):
         validators.validate_password_strength(raw_password)
         self._hashed_password = hash_password(raw_password)
 
+    def set_password(self, raw_password: str) -> None:
+        """Explicit helper used by flows that reset/update password."""
+        self.password = raw_password
+
     def verify_password(self, raw_password: str) -> bool:
         """
         Verify the provided password against the stored hashed password.
