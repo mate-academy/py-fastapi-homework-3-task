@@ -1,11 +1,11 @@
-from schemas.movies import (
+from .movies import (
     MovieDetailSchema,
     MovieListResponseSchema,
     MovieListItemSchema,
     MovieCreateSchema,
     MovieUpdateSchema
 )
-from schemas.accounts import (
+from .accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,

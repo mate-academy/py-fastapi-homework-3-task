@@ -2,7 +2,7 @@ import os
 
 from fastapi import Depends
 
-from config.settings import TestingSettings, Settings, BaseAppSettings
+from .settings import TestingSettings, Settings, BaseAppSettings
 from security.interfaces import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
 

@@ -70,13 +70,16 @@ class UserModel(Base):
     activation_token: Mapped[Optional["ActivationTokenModel"]] = relationship(
         "ActivationTokenModel",
         back_populates="user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy="joined"
     )
 
     password_reset_token: Mapped[Optional["PasswordResetTokenModel"]] = relationship(
         "PasswordResetTokenModel",
         back_populates="user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        lazy="joined"
+
     )
 
     refresh_tokens: Mapped[List["RefreshTokenModel"]] = relationship(
