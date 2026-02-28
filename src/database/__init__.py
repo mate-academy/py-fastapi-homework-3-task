@@ -1,7 +1,7 @@
 import os
 
-from database.models.base import Base
-from database.models.accounts import (
+from .models.base import Base
+from .models.accounts import (
     UserModel,
     UserGroupModel,
     UserGroupEnum,
@@ -9,7 +9,7 @@ from database.models.accounts import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from database.models.movies import (
+from .models.movies import (
     MovieModel,
     LanguageModel,
     ActorModel,
@@ -19,18 +19,18 @@ from database.models.movies import (
     ActorsMoviesModel,
     MoviesLanguagesModel
 )
-from database.session_sqlite import reset_sqlite_database as reset_database
-from database.validators import accounts as accounts_validators
+from .session_sqlite import reset_sqlite_database as reset_database
+from .validators import accounts as accounts_validators
 
 environment = os.getenv("ENVIRONMENT", "developing")
 
 if environment == "testing":
-    from database.session_sqlite import (
+    from .session_sqlite import (
         get_sqlite_db_contextmanager as get_db_contextmanager,
         get_sqlite_db as get_db
     )
 else:
-    from database.session_postgresql import (
+    from .session_postgresql import (
         get_postgresql_db_contextmanager as get_db_contextmanager,
         get_postgresql_db as get_db
     )
