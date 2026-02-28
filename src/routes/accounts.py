@@ -77,7 +77,8 @@ async def activate_account(account_data: UserActivationRequestSchema, db: AsyncS
             if activation_token:
                 if (
                         activation_token.token == account_data.token
-                        and db_user.activation_token.expires_at >= datetime.now()
+                        and activation_token.expires_at.replace(tzinfo=None)
+                        >= datetime.now(timezone.utc).replace(tzinfo=None)
                 ):
                     try:
                         db_user.is_active = True
@@ -123,7 +124,7 @@ async def password_reset_complete(
 
     if db_user:
         password_res_token = db_user.password_reset_token
-        if password_res_token:
+        if password_res_token and db_user.is_active:
             try:
                 try:
                     if (
