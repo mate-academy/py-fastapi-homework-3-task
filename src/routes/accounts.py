@@ -89,6 +89,7 @@ async def activate_account(account_data: UserActivationRequestSchema, db: AsyncS
                         await db.rollback()
                         raise HTTPException(status_code=500, detail=str(err))
             raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
+    raise HTTPException(status_code=404, detail=f"User with email: {account_data.email} not found")
 
 
 @router.post("/password-reset/request/")
