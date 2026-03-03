@@ -896,7 +896,7 @@ async def test_refresh_access_token_success(client, db_session, jwt_manager, see
     refresh_token = login_data["refresh_token"]
 
     refresh_payload = {"refresh_token": refresh_token}
-    refresh_response = await client.post("/api/v1/accounts/refresh/", json=refresh_payload)
+    refresh_response = await client.post("/api/v1/accounts/api/v1/accounts/refresh/", json=refresh_payload)
     assert refresh_response.status_code == 200, "Expected status code 200 for successful token refresh."
     refresh_data = refresh_response.json()
     assert "access_token" in refresh_data, "Access token is missing in the response."
@@ -920,7 +920,7 @@ async def test_refresh_access_token_expired_token(client, jwt_manager):
     )
 
     refresh_payload = {"refresh_token": expired_token}
-    refresh_response = await client.post("/api/v1/accounts/refresh/", json=refresh_payload)
+    refresh_response = await client.post("/api/v1/accounts/api/v1/accounts/refresh/", json=refresh_payload)
 
     assert refresh_response.status_code == 400, "Expected status code 400 for expired token."
     assert refresh_response.json()["detail"] == "Token has expired.", "Unexpected error message."
@@ -936,7 +936,7 @@ async def test_refresh_access_token_token_not_found(client, jwt_manager):
     """
     refresh_token = jwt_manager.create_refresh_token({"user_id": 1})
     refresh_payload = {"refresh_token": refresh_token}
-    refresh_response = await client.post("/api/v1/accounts/refresh/", json=refresh_payload)
+    refresh_response = await client.post("/api/v1/accounts/api/v1/accounts/refresh/", json=refresh_payload)
 
     assert refresh_response.status_code == 401, "Expected status code 401 for token not found."
     assert refresh_response.json()["detail"] == "Refresh token not found.", "Unexpected error message."
@@ -988,7 +988,7 @@ async def test_refresh_access_token_user_not_found(client, db_session, jwt_manag
     await db_session.commit()
 
     refresh_payload = {"refresh_token": refresh_token}
-    refresh_response = await client.post("/api/v1/accounts/refresh/", json=refresh_payload)
+    refresh_response = await client.post("/api/v1/accounts/api/v1/accounts/refresh/", json=refresh_payload)
 
     assert refresh_response.status_code == 404, "Expected status code 404 for non-existent user."
     assert refresh_response.json()["detail"] == "User not found.", "Unexpected error message."

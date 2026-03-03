@@ -274,7 +274,7 @@ async def login_user(
 
 
 @router.post(
-    "/refresh/",
+    "/api/v1/accounts/refresh/",
     response_model=TokenRefreshResponseSchema
 )
 async def refresh_tokens(
@@ -315,8 +315,6 @@ async def refresh_tokens(
             )
 
         access_token = jwt_auth_manager.create_access_token({"user_id": user.id})
-
-        await db.commit()
 
         return TokenRefreshResponseSchema(
             access_token=access_token
