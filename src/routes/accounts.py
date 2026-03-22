@@ -288,7 +288,7 @@ async def login_user(
 
 
 @router.post(
-    "/refresh/",
+    "/api/v1/accounts/refresh/",
     response_model=TokenRefreshResponseSchema,
 )
 async def refresh_access_token(
