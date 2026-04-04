@@ -65,11 +65,13 @@ async def register(
             raw_password=user_data.password,
             group_id=group.id
         )
-        await db.flush()
+
         ActivationTokenModel(user=new_user)
         db.add(new_user)
+
         await db.commit()
         await db.refresh(new_user)
+
         return new_user
     except SQLAlchemyError:
         raise HTTPException(
@@ -133,10 +135,8 @@ async def password_reset_request(
                             options=[joinedload(UserModel.password_reset_token)])
 
     if user and user.is_active:
-        if user.password_reset_token is not None:
-            query_delete = delete(PasswordResetTokenModel).where(
-                PasswordResetTokenModel.token == user.password_reset_token.token)
-            await db.execute(query_delete)
+        if user.password_reset_token:
+            await db.delete(user.password_reset_token)
         reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
         user.password_reset_token = reset_token
         await db.commit()
