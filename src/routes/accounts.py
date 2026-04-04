@@ -220,14 +220,14 @@ async def login(
 
         user_credentials = data.model_dump()
         user_credentials["user_id"] = user.id
-        refresh_token_value = jwt_manager.create_refresh_token(data=user_credentials)
+        refresh_token_value = jwt_manager.create_refresh_token(data={"user_id": user.id})
 
         user_refresh_token = RefreshTokenModel.create(
             user_id=user.id,
             days_valid=settings.LOGIN_TIME_DAYS,
             token=refresh_token_value
         )
-        access_token = jwt_manager.create_access_token(data=user_credentials)
+        access_token = jwt_manager.create_access_token(data={"user_id": user.id})
 
         db.add(user_refresh_token)
         await db.commit()
@@ -257,10 +257,10 @@ async def refresh_jwt_token(
     try:
         decoded_token_data = jwt_manager.decode_refresh_token(data.refresh_token)
         user_id = decoded_token_data.get("user_id")
-    except BaseSecurityError:
+    except BaseSecurityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Token has expired."
+            detail=str(e)
         )
 
     refresh_token = await get_one_by(db, RefreshTokenModel,
@@ -278,7 +278,7 @@ async def refresh_jwt_token(
             detail="User not found."
         )
 
-    new_access_token = jwt_manager.create_access_token(data=decoded_token_data)
+    new_access_token = jwt_manager.create_access_token(data={"user_id": user.id})
 
     return {
         "access_token": new_access_token
