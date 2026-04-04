@@ -124,7 +124,7 @@ async def user_activation(
     response_model=schemas.MessageResponseSchema,
     status_code=status.HTTP_200_OK
 )
-async def password_reset(
+async def password_reset_request(
         data: schemas.PasswordResetRequestSchema,
         db: AsyncSession = Depends(get_db)
 ):
@@ -151,7 +151,7 @@ async def password_reset(
     "/reset-password/complete/",
     response_model=schemas.MessageResponseSchema
 )
-async def password_reset(
+async def password_reset_complete(
         data: schemas.PasswordResetCompleteRequestSchema,
         db: AsyncSession = Depends(get_db)
 ):
