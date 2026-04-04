@@ -135,7 +135,7 @@ async def password_reset_request(
     if user and user.is_active:
         if user.password_reset_token is not None:
             query_delete = delete(PasswordResetTokenModel).where(
-                PasswordResetTokenModel.token == user.password_reset_token)
+                PasswordResetTokenModel.token == user.password_reset_token.token)
             await db.execute(query_delete)
         reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
         user.password_reset_token = reset_token
@@ -159,7 +159,8 @@ async def password_reset_complete(
         user = await get_one_by(db, UserModel,
                                 filters=[UserModel.email == data.email],
                                 options=[joinedload(UserModel.password_reset_token)])
-        if not user:
+
+        if not user or user and not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid email or token."
@@ -167,8 +168,8 @@ async def password_reset_complete(
 
         token_record = user.password_reset_token
         is_invalid = not token_record or data.token != token_record.token
-        is_expired = token_record and cast(datetime, token_record.expires_at).replace(
-            tzinfo=timezone.utc) < datetime.now(timezone.utc)
+        is_expired = (token_record and cast(datetime, token_record.expires_at)
+                      .replace(tzinfo=timezone.utc) < datetime.now(timezone.utc))
 
         if is_invalid or is_expired:
             if token_record:
