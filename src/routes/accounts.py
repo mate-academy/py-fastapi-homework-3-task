@@ -121,6 +121,16 @@ async def request_password_reset(
     if not user or not user.is_active:
         return MessageResponseSchema(message=GENERIC_MESSAGE)
 
+    stmt = select(PasswordResetTokenModel).where(
+        PasswordResetTokenModel.user_id == user.id
+    )
+    result = await db.execute(stmt)
+    existing_token = result.scalars().first()
+
+    if existing_token:
+        await db.delete(existing_token)
+        await db.flush()
+
     reset_token = PasswordResetTokenModel(user_id=user.id)
     db.add(reset_token)
     await db.flush()
@@ -144,6 +154,9 @@ async def reset_password(
     user = result.scalars().first()
 
     if not user:
+        raise HTTPException(status_code=400, detail="Invalid email or token.")
+
+    if not user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     stmt = select(PasswordResetTokenModel).where(
