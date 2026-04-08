@@ -27,10 +27,14 @@ class MessageResponseSchema(BaseModel):
     message: str
 
 
-class PasswordResetRequestSchema: ...
+class PasswordResetRequestSchema:
+    email: EmailStr
 
 
-class PasswordResetCompleteRequestSchema: ...
+class PasswordResetCompleteRequestSchema:
+    email: EmailStr
+    token: str
+    password: str
 
 
 class UserLoginResponseSchema: ...

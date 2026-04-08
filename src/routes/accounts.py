@@ -6,6 +6,7 @@ from sqlalchemy import select, delete, ColumnElement
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -26,10 +27,11 @@ from schemas import (
     UserRegistrationRequestSchema,
     MessageResponseSchema,
     UserActivationRequestSchema,
+    PasswordResetCompleteRequestSchema,
+    PasswordResetRequestSchema,
 )
 
 router = APIRouter()
-
 
 async def get_one_user(
     db: AsyncSession,
@@ -72,7 +74,7 @@ async def register_user(
 
         if not group:
             raise HTTPException(
-                status_code=500, detail="Default user group not configured."
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Default user group not configured."
             )
 
         new_user = UserModel.create(
@@ -129,7 +131,7 @@ async def activate_user(
 
     if is_token_invalid:
         raise HTTPException(
-            status_code=400, detail="Invalid or expired activation token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired activation token."
         )
 
     try:
@@ -139,7 +141,72 @@ async def activate_user(
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
-            status_code=400, detail="An error occurred during user activation."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="An error occurred during user activation."
         )
 
     return {"message": "User account activated successfully."}
+
+
+@router.post("/password-reset/request/", response_model=MessageResponseSchema)
+async def password_reset_request(
+    user_data: PasswordResetRequestSchema, db: AsyncSession = Depends(get_db)
+):
+    user = await get_one_user(
+        db,
+        model=UserModel,
+        options=[joinedload(UserModel.password_reset_token)],
+        filters=[UserModel.email == user_data.email],
+    )
+
+    if user and user.is_active:
+        try:
+            if user.password_reset_token:
+                await db.delete(user.password_reset_token)
+                await db.flush()
+
+            db.add(PasswordResetTokenModel(user=user))
+            await db.commit()
+        except Exception:
+            await db.rollback()
+
+    return {
+        "message": "If you are registered, you will receive an email with instructions."
+    }
+
+@router.post("/reset-password/complete/", response_model=MessageResponseSchema)
+async def password_reset_complete_request(user_data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)):
+    user = await get_one_user(
+        db,
+        model=UserModel,
+        options=[joinedload(UserModel.password_reset_token)],
+        filters=[UserModel.email == user_data.email],
+    )
+
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
+        )
+
+    token_record = user.password_reset_token
+    is_token_invalid = (
+        not token_record
+        or token_record.token != user_data.token
+        or datetime.now(timezone.utc) > token_record.expires_at
+    )
+
+    if is_token_invalid:
+        if token_record:
+            await db.delete(token_record)
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
+        )
+
+    try:
+        user.password = user_data.password
+        await db.delete(token_record)
+        await db.commit()
+        return {"message": "Password reset successfully."}
+    except Exception:
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resetting the password.")
