@@ -186,7 +186,7 @@ async def password_reset_request(
 
 
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
-async def password_reset_complete_request_v2(
+async def password_reset_complete(
     user_data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)
 ):
     user = await get_one_user(
@@ -230,7 +230,11 @@ async def password_reset_complete_request_v2(
         )
 
 
-@router.post("/login/", response_model=UserLoginResponseSchema)
+@router.post(
+    "/login/",
+    response_model=UserLoginResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def login_request(
     user_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
@@ -292,6 +296,8 @@ async def refresh_access_token(
     try:
         payload = jwt_manager.decode_refresh_token(user_data.refresh_token)
         user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token.")
     except Exception:
         raise HTTPException(status_code=400, detail="Token has expired.")
 
