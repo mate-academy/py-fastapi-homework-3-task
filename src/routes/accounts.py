@@ -261,7 +261,7 @@ async def login_request(
         )
 
     try:
-        token_data = {"sub": str(user.id)}
+        token_data = {"user_id": str(user.id)}
         user_access_token = jwt_manager.create_access_token(data=token_data)
         user_refresh_token = jwt_manager.create_refresh_token(data=token_data)
 
@@ -299,7 +299,7 @@ async def refresh_access_token(
 ):
     try:
         decoded_token_data = jwt_manager.decode_refresh_token(user_data.refresh_token)
-        user_id = decoded_token_data.get("sub")
+        user_id = decoded_token_data.get("user_id")
     except BaseSecurityError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -313,12 +313,12 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
         )
-    user = await get_one_user(db, UserModel, filters=[UserModel.id == int(user_id)])
+    user = await get_one_user(db, UserModel, filters=[UserModel.id == user_id])
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
-    new_access_token = jwt_manager.create_access_token(data={"sub": str(user.id)})
+    new_access_token = jwt_manager.create_access_token(data={"user_id": user.id})
 
     return {"access_token": new_access_token}
