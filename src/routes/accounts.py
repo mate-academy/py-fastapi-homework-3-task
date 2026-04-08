@@ -288,20 +288,12 @@ async def login_request(
         )
 
 
-@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=status.HTTP_201_CREATED)
 async def refresh_access_token(
     user_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
-    try:
-        payload = jwt_manager.decode_refresh_token(user_data.refresh_token)
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token.")
-    except Exception:
-        raise HTTPException(status_code=400, detail="Token has expired.")
-
     db_token = await get_one_user(
         db,
         model=RefreshTokenModel,
@@ -310,6 +302,14 @@ async def refresh_access_token(
 
     if not db_token:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
+
+    try:
+        payload = jwt_manager.decode_refresh_token(user_data.refresh_token)
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token.")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token has expired.")
 
     user = await get_one_user(
         db,
