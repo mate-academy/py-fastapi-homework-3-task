@@ -29,9 +29,12 @@ from schemas import (
     UserActivationRequestSchema,
     PasswordResetCompleteRequestSchema,
     PasswordResetRequestSchema,
+    UserLoginRequestSchema,
+    UserLoginResponseSchema,
 )
 
 router = APIRouter()
+
 
 async def get_one_user(
     db: AsyncSession,
@@ -74,7 +77,8 @@ async def register_user(
 
         if not group:
             raise HTTPException(
-                status_code=HTTP_500_INTERNAL_SERVER_ERROR, detail="Default user group not configured."
+                status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Default user group not configured.",
             )
 
         new_user = UserModel.create(
@@ -131,7 +135,8 @@ async def activate_user(
 
     if is_token_invalid:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired activation token."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation token.",
         )
 
     try:
@@ -141,7 +146,8 @@ async def activate_user(
     except SQLAlchemyError as e:
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="An error occurred during user activation."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An error occurred during user activation.",
         )
 
     return {"message": "User account activated successfully."}
@@ -173,8 +179,11 @@ async def password_reset_request(
         "message": "If you are registered, you will receive an email with instructions."
     }
 
+
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
-async def password_reset_complete_request(user_data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)):
+async def password_reset_complete_request(
+    user_data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)
+):
     user = await get_one_user(
         db,
         model=UserModel,
@@ -209,4 +218,60 @@ async def password_reset_complete_request(user_data: PasswordResetCompleteReques
         return {"message": "Password reset successfully."}
     except Exception:
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An error occurred while resetting the password.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password.",
+        )
+
+
+@router.post("/login/", response_model=UserLoginResponseSchema)
+async def login_request(
+    user_data: UserLoginRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
+):
+    user = await get_one_user(
+        db,
+        model=UserModel,
+        filters=[UserModel.email == user_data.email],
+    )
+
+    if not user or not user.verify_password(user_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is not activated.",
+        )
+
+    try:
+        token_data = {"sub": str(user.id)}
+        user_access_token = jwt_manager.create_access_token(data=token_data)
+        user_refresh_token = jwt_manager.create_refresh_token(data=token_data)
+
+        db.add(
+            RefreshTokenModel.create(
+                user_id=user.id,
+                days_valid=settings.LOGIN_TIME_DAYS,
+                token=user_refresh_token,
+            )
+        )
+        await db.commit()
+
+        return {
+            "access_token": user_access_token,
+            "refresh_token": user_refresh_token,
+            "token_type": "bearer",
+        }
+
+    except Exception:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing the request.",
+        )

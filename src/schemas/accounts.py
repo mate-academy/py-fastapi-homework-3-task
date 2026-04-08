@@ -37,10 +37,15 @@ class PasswordResetCompleteRequestSchema:
     password: str
 
 
-class UserLoginResponseSchema: ...
+class UserLoginResponseSchema:
+    access_token: str
+    refresh_token: str
+    token_type: str
 
 
-class UserLoginRequestSchema: ...
+class UserLoginRequestSchema:
+    email: EmailStr
+    password: str
 
 
 class TokenRefreshRequestSchema: ...
