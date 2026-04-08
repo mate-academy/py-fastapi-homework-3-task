@@ -261,7 +261,7 @@ async def login_request(
         )
 
     try:
-        token_data = {"user_id": str(user.id)}
+        token_data = {"user_id": user.id}
         user_access_token = jwt_manager.create_access_token(data=token_data)
         user_refresh_token = jwt_manager.create_refresh_token(data=token_data)
 
