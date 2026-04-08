@@ -21,7 +21,12 @@ from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
 
 
-from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema
+from schemas import (
+    UserRegistrationResponseSchema,
+    UserRegistrationRequestSchema,
+    MessageResponseSchema,
+    UserActivationRequestSchema,
+)
 
 router = APIRouter()
 
@@ -91,3 +96,50 @@ async def register_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during user creation.",
         )
+
+
+@router.post("/activate", response_model=MessageResponseSchema)
+async def activate_user(
+    user_data: UserActivationRequestSchema, db: AsyncSession = Depends(get_db)
+):
+    user = await get_one_user(
+        db,
+        model=UserModel,
+        options=[joinedload(UserModel.activation_token)],
+        filters=[UserModel.email == user_data.email],
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+        )
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already active.",
+        )
+
+    token_record = user.activation_token
+    is_token_invalid = (
+        not token_record
+        or token_record.token != user_data.token
+        or datetime.now(timezone.utc) > token_record.expires_at
+    )
+
+    if is_token_invalid:
+        raise HTTPException(
+            status_code=400, detail="Invalid or expired activation token."
+        )
+
+    try:
+        user.is_active = True
+        await db.delete(token_record)
+        await db.commit()
+    except SQLAlchemyError as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400, detail="An error occurred during user activation."
+        )
+
+    return {"message": "User account activated successfully."}
