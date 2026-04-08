@@ -27,30 +27,30 @@ class MessageResponseSchema(BaseModel):
     message: str
 
 
-class PasswordResetRequestSchema:
+class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
 
-class PasswordResetCompleteRequestSchema:
+class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     password: str
 
 
-class UserLoginResponseSchema:
+class UserLoginResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
 
 
-class UserLoginRequestSchema:
+class UserLoginRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
 
-class TokenRefreshRequestSchema:
+class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
 
 
-class TokenRefreshResponseSchema:
+class TokenRefreshResponseSchema(BaseModel):
     access_token: str
