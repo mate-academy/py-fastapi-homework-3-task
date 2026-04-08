@@ -9,15 +9,13 @@ from database import accounts_validators
 class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
     password: str
-    group_id: int
 
 
 class UserRegistrationResponseSchema(BaseModel):
-    id: str
+    id: int
     email: EmailStr
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class UserActivationRequestSchema: ...

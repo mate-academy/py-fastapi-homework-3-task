@@ -30,16 +30,14 @@ async def get_one_user(
     db: AsyncSession,
     model: type,
     filters: list[ColumnElement[bool]],
-    options: list,
+    options: list | None = None,
 ):
     query = select(model)
-
     if options:
-        for o in options:
-            query = query.options(o)
+        query = query.options(*options)
     if filters:
-        for f in filters:
-            query = query.filter(f)
+        query = query.where(*filters)
+
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -52,23 +50,25 @@ async def get_one_user(
 async def register_user(
     user_data: UserRegistrationRequestSchema, db: AsyncSession = Depends(get_db)
 ):
-    try:
-        existing_user = await get_one_user(
-            db, model=UserModel, filters=[UserModel.email == user_data.email]
+    existing_user = await get_one_user(
+        db, model=UserModel, filters=[UserModel.email == user_data.email]
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A user with this email {user_data.email} already exists.",
         )
 
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Email {user_data.email} already registered.",
-            )
-
+    try:
         group = await get_one_user(
             db, UserGroupModel, filters=[UserGroupModel.name == UserGroupEnum.USER]
         )
 
         if not group:
-            raise HTTPException(status_code=500, detail="Default group not found.")
+            raise HTTPException(
+                status_code=500, detail="Default user group not configured."
+            )
 
         new_user = UserModel.create(
             email=user_data.email,
@@ -89,5 +89,5 @@ async def register_user(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal Server Error",
+            detail="An error occurred during user creation.",
         )
