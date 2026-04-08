@@ -48,7 +48,9 @@ class UserLoginRequestSchema:
     password: str
 
 
-class TokenRefreshRequestSchema: ...
+class TokenRefreshRequestSchema:
+    refresh_token: str
 
 
-class TokenRefreshResponseSchema: ...
+class TokenRefreshResponseSchema:
+    access_token: str

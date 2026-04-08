@@ -31,6 +31,8 @@ from schemas import (
     PasswordResetRequestSchema,
     UserLoginRequestSchema,
     UserLoginResponseSchema,
+    TokenRefreshResponseSchema,
+    TokenRefreshRequestSchema,
 )
 
 router = APIRouter()
@@ -96,7 +98,7 @@ async def register_user(
 
         return new_user
 
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -143,7 +145,7 @@ async def activate_user(
         user.is_active = True
         await db.delete(token_record)
         await db.commit()
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -275,3 +277,39 @@ async def login_request(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request.",
         )
+
+
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema)
+async def refresh_access_token(
+    user_data: TokenRefreshRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+):
+    try:
+        payload = jwt_manager.decode_refresh_token(user_data.refresh_token)
+        user_id = payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Token has expired.")
+
+    db_token = await get_one_user(
+        db,
+        model=RefreshTokenModel,
+        filters=[RefreshTokenModel.token == user_data.refresh_token],
+    )
+
+    if not db_token:
+        raise HTTPException(status_code=401, detail="Refresh token not found.")
+
+    user = await get_one_user(
+        db,
+        model=UserModel,
+        filters=[UserModel.id == int(user_id)],
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    token_data = {"sub": str(user.id)}
+    new_access_token = jwt_manager.create_access_token(data=token_data)
+
+    return {"access_token": new_access_token}
