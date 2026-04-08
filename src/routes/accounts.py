@@ -55,7 +55,7 @@ async def get_one_user(
 
 
 @router.post(
-    "/register",
+    "/register/",
     response_model=UserRegistrationResponseSchema,
     status_code=status.HTTP_201_CREATED,
 )
@@ -89,9 +89,10 @@ async def register_user(
             group_id=group.id,
         )
 
-        ActivationTokenModel(user=new_user)
+        activation_token = ActivationTokenModel(user=new_user)
 
         db.add(new_user)
+        db.add(activation_token)
 
         await db.commit()
         await db.refresh(new_user)
@@ -106,7 +107,7 @@ async def register_user(
         )
 
 
-@router.post("/activate", response_model=MessageResponseSchema)
+@router.post("/activate/", response_model=MessageResponseSchema)
 async def activate_user(
     user_data: UserActivationRequestSchema, db: AsyncSession = Depends(get_db)
 ):
@@ -119,7 +120,7 @@ async def activate_user(
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired activation token."
         )
 
     if user.is_active:
@@ -132,7 +133,7 @@ async def activate_user(
     is_token_invalid = (
         not token_record
         or token_record.token != user_data.token
-        or datetime.now(timezone.utc) > token_record.expires_at
+        or datetime.now(timezone.utc) > cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
     )
 
     if is_token_invalid:
@@ -202,7 +203,7 @@ async def password_reset_complete_request(
     is_token_invalid = (
         not token_record
         or token_record.token != user_data.token
-        or datetime.now(timezone.utc) > token_record.expires_at
+        or datetime.now(timezone.utc) > cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
     )
 
     if is_token_invalid:

@@ -10,6 +10,12 @@ class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("password", mode="after")
+    @classmethod
+    def check_password_strength(cls, value: str) -> str:
+        accounts_validators.validate_password_strength(value)
+        return value
+
 
 class UserRegistrationResponseSchema(BaseModel):
     id: int
@@ -35,6 +41,14 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     password: str
+
+
+
+    @field_validator("password", mode="after")
+    @classmethod
+    def check_password_strength(cls, value: str) -> str:
+        accounts_validators.validate_password_strength(value)
+        return value
 
 
 class UserLoginResponseSchema(BaseModel):
