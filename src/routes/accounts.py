@@ -288,7 +288,11 @@ async def login_request(
         )
 
 
-@router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/refresh/",
+    response_model=TokenRefreshResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def refresh_access_token(
     user_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
@@ -298,29 +302,24 @@ async def refresh_access_token(
         decoded_token_data = jwt_manager.decode_refresh_token(user_data.refresh_token)
         user_id = decoded_token_data.get("user_id")
     except BaseSecurityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    refresh_token = await get_one_user(db, RefreshTokenModel,
-                                     filters=[RefreshTokenModel.token == user_data.refresh_token])
+    refresh_token = await get_one_user(
+        db,
+        RefreshTokenModel,
+        filters=[RefreshTokenModel.token == user_data.refresh_token],
+    )
 
     if not refresh_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found."
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
         )
     user = await get_one_user(db, UserModel, filters=[UserModel.id == user_id])
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found."
         )
 
     new_access_token = jwt_manager.create_access_token(data={"user_id": user.id})
 
-    return {
-        "access_token": new_access_token
-    }
-
+    return {"access_token": new_access_token}
