@@ -186,7 +186,7 @@ async def password_reset_request(
 
 
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema)
-async def password_reset_complete_request(
+async def password_reset_complete_request_v2(
     user_data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)
 ):
     user = await get_one_user(
