@@ -42,8 +42,6 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     token: str
     password: str
 
-
-
     @field_validator("password", mode="after")
     @classmethod
     def check_password_strength(cls, value: str) -> str:
