@@ -34,6 +34,7 @@ from schemas import (
     TokenRefreshResponseSchema,
     TokenRefreshRequestSchema,
 )
+from security.passwords import hash_password
 
 router = APIRouter()
 
@@ -218,7 +219,7 @@ async def password_reset_complete(
         )
 
     try:
-        user.password = user_data.password
+        user._hashed_password = hash_password(user_data.password)
         await db.delete(token_record)
         await db.commit()
         return {"message": "Password reset successfully."}
