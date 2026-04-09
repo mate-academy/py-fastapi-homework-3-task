@@ -5,7 +5,7 @@ from database.crud.accounts import (
     delete_activation_token,
     delete_all_password_reset_tokens,
     insert_password_reset_token,
-    delete_password_reset_token_and_returning,
+    delete_password_reset_token,
     change_password_for_user,
     get_user_by_email,
     insert_refresh_token,

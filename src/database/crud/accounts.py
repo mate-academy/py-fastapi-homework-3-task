@@ -1,5 +1,5 @@
 from datetime import timedelta, datetime, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
 from sqlalchemy import insert, select, update, func, delete
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -58,13 +58,13 @@ async def register_new_user(
 
 
 async def delete_activation_token(
-    db: AsyncSession, token: str, email: str, timedelta_: timedelta
+    db: AsyncSession, token: str, email: str
 ) -> bool:
     subquery = select(UserModel.id).where(UserModel.email == email).scalar_subquery()
 
     stmt = delete(ActivationTokenModel).where(
         ActivationTokenModel.token == token,
-        ActivationTokenModel.expires_at > (datetime.now(timezone.utc) + timedelta_),
+        ActivationTokenModel.expires_at > datetime.now(timezone.utc),
         ActivationTokenModel.user_id == subquery,
     )
     res = await db.execute(stmt)
@@ -120,34 +120,28 @@ async def insert_password_reset_token(
     return res.rowcount == 1
 
 
-async def delete_password_reset_token_and_returning(
+async def delete_password_reset_token(
     db: AsyncSession, pass_req_complete: PasswordResetCompleteRequestSchema
-) -> Optional[PasswordResetTokenModel]:
+) -> Tuple[Optional[PasswordResetTokenModel], bool]:
     subquery = (
         select(UserModel.id)
         .where(
             UserModel.email == pass_req_complete.email,
-            UserModel.is_active == True, # noqa E712
+            UserModel.is_active.is_(True),
         )
         .scalar_subquery()
     )
-    select_stmt = select(PasswordResetTokenModel).where(
-        PasswordResetTokenModel.user_id == subquery,
+    select_stmt = (
+        delete(PasswordResetTokenModel)
+        .where(
+            PasswordResetTokenModel.user_id == subquery,
+        )
+        .returning(PasswordResetTokenModel)
     )
     pass_reset_model = (await db.execute(select_stmt)).scalar_one_or_none()
-    if not pass_reset_model:
-        return None
-
-    await db.delete(pass_reset_model)
-    await db.commit()
-
-    if pass_reset_model.token != pass_req_complete.token:
-        return None
-    if pass_reset_model.expires_at.replace(tzinfo=timezone.utc) < datetime.now(
-        timezone.utc
-    ):
-        return None
-    return pass_reset_model
+    if pass_reset_model and pass_reset_model.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+        return pass_reset_model, True
+    return pass_reset_model, False
 
 
 async def get_user_by_email(

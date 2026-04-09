@@ -38,7 +38,7 @@ from database.crud import (
     delete_activation_token,
     delete_all_password_reset_tokens,
     insert_password_reset_token,
-    delete_password_reset_token_and_returning,
+    delete_password_reset_token,
     change_password_for_user,
     get_user_by_email,
     insert_refresh_token,
@@ -114,12 +114,10 @@ async def activate_user_account(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User account is already active.",
             )
-        timedelta_ = timedelta(hours=settings.TOKEN_DELTA_HOURS)
         if not await delete_activation_token(
             db=db,
             token=act_request.token,
             email=act_request.email,
-            timedelta_=timedelta_,
         ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -159,9 +157,11 @@ async def reset_password_complete(
     db: database, pass_req_complete: PasswordResetCompleteRequestSchema
 ):
     try:
-        if not await delete_password_reset_token_and_returning(
+        pass_reset_model, flag_to_delete = await delete_password_reset_token(
             db=db, pass_req_complete=pass_req_complete
-        ):
+        )
+        if not pass_reset_model or pass_reset_model.token != pass_req_complete.token or flag_to_delete:
+            await db.commit()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid email or token.",
