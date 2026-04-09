@@ -9,6 +9,7 @@ class BaseAppSettings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = str(BASE_DIR / "database" / "source" / "theater.db")
     PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_movies.csv")
+    TOKEN_DELTA_HOURS: int = 1
     LOGIN_TIME_DAYS: int = 7
 
 
