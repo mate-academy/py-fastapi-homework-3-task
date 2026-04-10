@@ -60,6 +60,12 @@ async def register_user(
     result_group = await db.execute(stmt_group)
     user_group = result_group.scalars().first()
 
+    if not user_group:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Default user group not found."
+        )
+
     user = UserModel.create(
         email=user_data.email,
         raw_password=user_data.password,
@@ -207,6 +213,16 @@ async def reset_password_complete(
         )
 
     user = token_record.user
+
+    if not user or not user.is_active:
+        await db.delete(token_record)
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
+    # password setter in UserModel automatically hashes via bcrypt
     user.password = reset_data.password
     await db.delete(token_record)
 
@@ -299,7 +315,7 @@ async def refresh_access_token(
     result = await db.execute(stmt)
     token_record = result.scalars().first()
 
-    if not token_record:
+    if not token_record or token_record.user_id != token_data["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token not found."
