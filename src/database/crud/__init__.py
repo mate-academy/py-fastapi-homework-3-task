@@ -9,5 +9,5 @@ from database.crud.accounts import (
     change_password_for_user,
     get_user_by_email,
     insert_refresh_token,
-    get_refresh_token_and_join_with_user
+    get_refresh_token_and_join_with_user,
 )

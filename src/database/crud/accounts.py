@@ -57,9 +57,7 @@ async def register_new_user(
         return None
 
 
-async def delete_activation_token(
-    db: AsyncSession, token: str, email: str
-) -> bool:
+async def delete_activation_token(db: AsyncSession, token: str, email: str) -> bool:
     subquery = select(UserModel.id).where(UserModel.email == email).scalar_subquery()
 
     stmt = delete(ActivationTokenModel).where(
@@ -74,7 +72,7 @@ async def delete_activation_token(
 async def set_user_active_status(db: AsyncSession, email: str) -> bool:
     res = await db.execute(
         update(UserModel)
-        .where(UserModel.email == email, UserModel.is_active == False) # noqa E712
+        .where(UserModel.email == email, UserModel.is_active == False)  # noqa E712
         .values(is_active=True)
     )
     return res.rowcount == 1
@@ -106,7 +104,7 @@ async def insert_password_reset_token(
         select(UserModel.id)
         .where(
             UserModel.email == pass_request.email,
-            UserModel.is_active == True, # noqa E712
+            UserModel.is_active == True,  # noqa E712
         )
         .scalar_subquery()
     )
@@ -139,7 +137,11 @@ async def delete_password_reset_token(
         .returning(PasswordResetTokenModel)
     )
     pass_reset_model = (await db.execute(select_stmt)).scalar_one_or_none()
-    if pass_reset_model and pass_reset_model.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    if pass_reset_model and (
+        pass_reset_model.expires_at.replace(tzinfo=timezone.utc)
+        < datetime.now(timezone.utc)
+        or pass_reset_model.token != pass_req_complete.token
+    ):
         return pass_reset_model, True
     return pass_reset_model, False
 
