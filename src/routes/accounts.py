@@ -71,13 +71,13 @@ async def activate(data: UserActivationRequestSchema, db: AsyncSession = Depends
     current_time = datetime.now(timezone.utc)
 
     if expires_at < current_time:
-        await db.delete(token_record)
+        db.delete(token_record)
         await db.commit()
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     try:
         db_user.is_active = True
-        await db.delete(token_record)
+        db.delete(token_record)
 
         await db.commit()
         return {"message": "User account activated successfully."}
@@ -122,19 +122,19 @@ async def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema
     token_record = result.scalar_one_or_none()
     if not token_record or token_record.token != reset_data.token:
         if token_record:
-            await db.delete(token_record)
+            db.delete(token_record)
             await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
     expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
     if expires_at < datetime.now(timezone.utc):
-        await db.delete(token_record)
+        db.delete(token_record)
         await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
     hashed_password = hash_password(reset_data.password)
 
     try:
         db_user._hashed_password = hashed_password
-        await db.delete(token_record)
+        db.delete(token_record)
         await db.commit()
     except Exception:
         await db.rollback()
@@ -145,7 +145,7 @@ async def password_reset_complete(reset_data: PasswordResetCompleteRequestSchema
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_200_OK
 )
 async def login(
         login_data: UserLoginRequestSchema,
