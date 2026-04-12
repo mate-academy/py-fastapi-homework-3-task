@@ -1,6 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
 
-from database import accounts_validators
 from database.validators import accounts as validators
 
 
