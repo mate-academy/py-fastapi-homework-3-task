@@ -186,7 +186,7 @@ async def reset_password(
         raise_invalid_email_or_token()
 
     try:
-        db_user.password = user.password
+        db_user.password = hash_password(user.password)
         await db.delete(db_user.password_reset_token)
         await db.commit()
         return {"message": "Password reset successfully."}
@@ -201,7 +201,6 @@ async def reset_password(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
 )
 async def login(
     user: UserLoginRequestSchema,
