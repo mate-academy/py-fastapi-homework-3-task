@@ -21,9 +21,9 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import TokenExpiredError, InvalidTokenError
-from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema, UserActivationRequestSchema, \
+from schemas import (UserRegistrationResponseSchema, UserRegistrationRequestSchema, UserActivationRequestSchema, \
     MessageResponseSchema, PasswordResetRequestSchema, PasswordResetCompleteRequestSchema, UserLoginResponseSchema, \
-    UserLoginRequestSchema, TokenRefreshResponseSchema, TokenRefreshRequestSchema
+    UserLoginRequestSchema, TokenRefreshResponseSchema, TokenRefreshRequestSchema)
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
