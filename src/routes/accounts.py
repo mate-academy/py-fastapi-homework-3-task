@@ -164,7 +164,7 @@ async def complete_reset_password(
         raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
 
 
-@router.post("/login/", response_model=UserLoginResponseSchema, status_code=201)
+@router.post("/login/", response_model=UserLoginResponseSchema, status_code=200)
 async def user_login(
         login_data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
@@ -204,7 +204,7 @@ async def user_login(
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
 
-@router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=200)
+@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema, status_code=200)
 async def refresh_token(
         refresh_token_data: TokenRefreshRequestSchema,
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
