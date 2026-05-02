@@ -204,7 +204,7 @@ async def user_login(
         raise HTTPException(status_code=500, detail="An error occurred while processing the request.")
 
 
-@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema, status_code=200)
+@router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=200)
 async def refresh_token(
         refresh_token_data: TokenRefreshRequestSchema,
         jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
