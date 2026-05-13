@@ -5,13 +5,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-from config import get_settings
+from src.database.session_sqlite import AsyncSQLiteSessionLocal
+from src.config import get_settings
 
 settings = get_settings()
 
-POSTGRESQL_DATABASE_URL = (f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@"
-                           f"{settings.POSTGRES_HOST}:{settings.POSTGRES_DB_PORT}/{settings.POSTGRES_DB}")
+POSTGRESQL_DATABASE_URL = (
+    f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@"
+    f"{settings.POSTGRES_HOST}:{settings.POSTGRES_DB_PORT}/{settings.POSTGRES_DB}"
+)
 postgresql_engine = create_async_engine(POSTGRESQL_DATABASE_URL, echo=False)
+
 AsyncPostgresqlSessionLocal = sessionmaker(  # type: ignore
     bind=postgresql_engine,
     class_=AsyncSession,
@@ -49,3 +53,22 @@ async def get_postgresql_db_contextmanager() -> AsyncGenerator[AsyncSession, Non
     """
     async with AsyncPostgresqlSessionLocal() as session:
         yield session
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get database session."""
+    # Если мы в тестах, используем SQLite сессию
+    if settings.ENVIRONMENT == "testing":
+        session_factory = AsyncSQLiteSessionLocal
+    else:
+        session_factory = AsyncPostgresqlSessionLocal
+
+    async with session_factory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

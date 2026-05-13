@@ -1,0 +1,17 @@
+asyncpg
+flake8
+black
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-dotenv
+aiosqlite
+pytest
+pytest-asyncio
+httpx
+poetry
+passlib
+bcrypt
+PyJWT

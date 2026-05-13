@@ -1,3 +1,5 @@
+# @format
+
 services:
   db:
     image: 'postgres:latest'
@@ -5,14 +7,14 @@ services:
     env_file:
       - .env
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - postgres_theater_data:/var/lib/postgresql/data/
     networks:
       - theater_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB -h 127.0.0.1 || exit 1" ]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d movies_db']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +24,7 @@ services:
     image: dpage/pgadmin4
     container_name: pgadmin_theater
     ports:
-      - "3333:80"
+      - '3333:80'
     env_file:
       - .env
     depends_on:
@@ -37,7 +39,7 @@ services:
     restart: always
     build: .
     container_name: backend_theater
-    command: [ "/bin/bash", "/commands/run_web_server_dev.sh" ]
+    command: ['/bin/bash', '/commands/run_web_server_dev.sh']
     env_file:
       - .env
     environment:
@@ -45,7 +47,7 @@ services:
       - PYTHONPATH=/usr/src/fastapi
       - WATCHFILES_FORCE_POLLING=true
     ports:
-      - "8000:8000"
+      - '8000:8000'
     depends_on:
       db:
         condition: service_healthy
@@ -57,7 +59,7 @@ services:
   migrator:
     build: .
     container_name: alembic_migrator_theater
-    command: ["/bin/bash", "/commands/run_migration.sh"]
+    command: ['/bin/bash', '/commands/run_migration.sh']
     depends_on:
       db:
         condition: service_healthy

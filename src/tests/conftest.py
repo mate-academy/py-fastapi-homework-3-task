@@ -1,36 +1,57 @@
+import os
+
+os.environ["ENVIRONMENT"] = "testing"
+
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import get_settings
-from database import (
-    reset_database,
-    get_db_contextmanager,
-    UserGroupEnum,
-    UserGroupModel
+
+from src.database.models.base import Base
+from src.database.models.accounts import (
+    UserModel,
+    UserGroupModel,
+    ActivationTokenModel,
+    RefreshTokenModel,
+    PasswordResetTokenModel,
 )
-from database.populate import CSVDatabaseSeeder
-from main import app
-from security.interfaces import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
+from src.database.models.movies import MovieModel
 
+# from src.database.session_postgresql import postgresql_engine as engine
 
-@pytest_asyncio.fixture(scope="function", autouse=True)
-async def reset_db():
-    """
-    Reset the SQLite database before each test.
+# для тестов с SQLite, так как он не требует отдельного сервера
+# и проще в настройке для тестов
+from src.database.session_sqlite import sqlite_engine as engine
 
-    This fixture ensures that the database is cleared and recreated for every test function.
-    It helps maintain test isolation by preventing data leakage between tests.
-    """
-    await reset_database()
+from src.config import get_settings
+from src.database.session_sqlite import (
+    reset_sqlite_database as reset_database,
+    get_sqlite_db_contextmanager as get_db_contextmanager,
+)
+from src.database import UserGroupEnum, UserGroupModel
+from src.database.populate import CSVDatabaseSeeder
+from src.main import app
+from src.security.interfaces import JWTAuthManagerInterface
+from src.security.token_manager import JWTAuthManager
+
+# @pytest_asyncio.fixture(scope="function", autouse=True)
+# async def reset_db():
+#     """
+#     Reset the SQLite database before each test.
+
+#     This fixture ensures that the database is cleared and recreated for every test function.
+#     It helps maintain test isolation by preventing data leakage between tests.
+#     """
+#     await reset_database()
 
 
 @pytest_asyncio.fixture(scope="function")
 async def client():
     """Provide an asynchronous test client for making HTTP requests."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as async_client:
         yield async_client
 
 
@@ -58,7 +79,9 @@ async def seed_database(db_session):
     :type db_session: AsyncSession
     """
     settings = get_settings()
-    seeder = CSVDatabaseSeeder(csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session)
+    seeder = CSVDatabaseSeeder(
+        csv_file_path=settings.PATH_TO_MOVIES_CSV, db_session=db_session
+    )
 
     if not await seeder.is_db_populated():
         await seeder.seed()
@@ -83,7 +106,7 @@ async def jwt_manager() -> JWTAuthManagerInterface:
     return JWTAuthManager(
         secret_key_access=settings.SECRET_KEY_ACCESS,
         secret_key_refresh=settings.SECRET_KEY_REFRESH,
-        algorithm=settings.JWT_SIGNING_ALGORITHM
+        algorithm=settings.JWT_SIGNING_ALGORITHM,
     )
 
 
@@ -99,3 +122,15 @@ async def seed_user_groups(db_session: AsyncSession):
     await db_session.execute(insert(UserGroupModel).values(groups))
     await db_session.commit()
     yield db_session
+
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def create_test_database():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    yield
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)

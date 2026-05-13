@@ -1,10 +1,46 @@
 from passlib.context import CryptContext
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    bcrypt__rounds=14,
-    deprecated="auto"
-)
+import bcrypt
+from typing import Tuple
+
+pwd_context = CryptContext(schemes=["bcrypt"], bcrypt__rounds=14, deprecated="auto")
+
+
+class PasswordManager:
+    """Password hashing and verification manager."""
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        """Hash a password using bcrypt."""
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+        return hashed.decode("utf-8")
+
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Verify a password against its hash."""
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
+
+    @staticmethod
+    def validate_password_strength(password: str) -> Tuple[bool, str]:
+        """Validate password strength."""
+        if len(password) < 8:
+            return False, "Password must contain at least 8 characters."
+        if not any(c.isdigit() for c in password):
+            return False, "Password must contain at least one digit."
+        if not any(c.isupper() for c in password):
+            return False, "Password must contain at least one uppercase letter."
+        if not any(c.islower() for c in password):
+            return False, "Password must contain at least one lower letter."
+        special_chars = "@$!%*?#&"
+        if not any(c in special_chars for c in password):
+            return (
+                False,
+                f"Password must contain at least one special character: {special_chars}.",
+            )
+        return True, ""
 
 
 def hash_password(password: str) -> str:
