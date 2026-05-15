@@ -29,7 +29,11 @@ from security.token_manager import JWTAuthManager
 router = APIRouter()
 
 
-@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register/",
+    response_model=UserRegistrationResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
 async def register_user(user: UserRegistrationRequestSchema, db: AsyncSession = Depends(get_db)):
     try:
         group_query = await db.execute(select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER))
