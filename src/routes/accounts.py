@@ -45,7 +45,7 @@ async def register_user(user: UserRegistrationRequestSchema, db: AsyncSession = 
         if existing_user:
             raise HTTPException(
                 status_code=409,
-                detail=f"A user with this email {existing_user.email} already exists."
+                detail=f"A user with this email {user.email} already exists."
             )
 
         new_user = UserModel.create(email=user.email, raw_password=user.password, group_id=group.id)
