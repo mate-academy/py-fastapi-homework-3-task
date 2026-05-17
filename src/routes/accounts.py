@@ -18,13 +18,20 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import BaseSecurityError
-from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema, UserActivationRequestSchema, \
-    PasswordResetRequestSchema, PasswordResetCompleteRequestSchema
-from schemas.accounts import UserLoginResponseSchema, UserLoginRequestSchema, TokenRefreshResponseSchema, \
+from schemas import (
+    UserRegistrationResponseSchema,
+    UserRegistrationRequestSchema,
+    UserActivationRequestSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema
+)
+from schemas.accounts import (
+    UserLoginResponseSchema,
+    UserLoginRequestSchema,
+    TokenRefreshResponseSchema,
     TokenRefreshRequestSchema
+)
 from security.interfaces import JWTAuthManagerInterface
-from security.passwords import hash_password
-from security.token_manager import JWTAuthManager
 
 router = APIRouter()
 
