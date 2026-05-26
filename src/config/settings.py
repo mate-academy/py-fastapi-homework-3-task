@@ -8,7 +8,9 @@ from pydantic_settings import BaseSettings
 class BaseAppSettings(BaseSettings):
     BASE_DIR: Path = Path(__file__).parent.parent
     PATH_TO_DB: str = str(BASE_DIR / "database" / "source" / "theater.db")
-    PATH_TO_MOVIES_CSV: str = str(BASE_DIR / "database" / "seed_data" / "imdb_movies.csv")
+    PATH_TO_MOVIES_CSV: str = str(
+        BASE_DIR / "database" / "seed_data" / "imdb_movies.csv"
+    )
     LOGIN_TIME_DAYS: int = 7
 
 
@@ -28,11 +30,15 @@ class TestingSettings(BaseAppSettings):
     SECRET_KEY_ACCESS: str = "SECRET_KEY_ACCESS"
     SECRET_KEY_REFRESH: str = "SECRET_KEY_REFRESH"
     JWT_SIGNING_ALGORITHM: str = "HS256"
+    ACTIVATION_TOKEN_EXPIRE_DAYS: int = 7
+    PASSWORD_RESET_TOKEN_EXPIRE_DAYS: int = 7
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    LOGIN_TIME_DAYS: int = 7
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
-        object.__setattr__(self, 'PATH_TO_DB', ":memory:")
+        object.__setattr__(self, "PATH_TO_DB", ":memory:")
         object.__setattr__(
             self,
-            'PATH_TO_MOVIES_CSV',
-            str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv")
+            "PATH_TO_MOVIES_CSV",
+            str(self.BASE_DIR / "database" / "seed_data" / "test_data.csv"),
         )
