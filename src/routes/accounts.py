@@ -188,10 +188,10 @@ async def password_reset(
 async def reset_password(
     data: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)
 ):
-    querty_user = await db.execute(
+    query_user = await db.execute(
         select(UserModel).where(UserModel.email == data.email)
     )
-    user = querty_user.scalar_one_or_none()
+    user = query_user.scalar_one_or_none()
     if not user or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
