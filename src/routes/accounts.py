@@ -167,11 +167,11 @@ async def password_reset(
                 PasswordResetTokenModel.user_id == user.id
             )
         )
-        expire_hours = getattr(settings, "ACTIVATION_TOKEN_EXPIRE_DAYS", 7)
+        expire_days = getattr(settings, "PASSWORD_RESET_TOKEN_EXPIRE_DAYS", 7)
         new_token = PasswordResetTokenModel(
             user_id=cast(int, user.id),
             token=generate_secure_token(),
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=expire_hours),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=expire_days),
         )
         db.add(new_token)
         await db.commit()
@@ -321,6 +321,13 @@ async def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token not found.",
+        )
+
+    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired.",
         )
 
     query_user = await db.execute(select(UserModel).where(UserModel.id == user_id))
