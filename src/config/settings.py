@@ -30,6 +30,10 @@ class TestingSettings(BaseAppSettings):
     SECRET_KEY_ACCESS: str = "SECRET_KEY_ACCESS"
     SECRET_KEY_REFRESH: str = "SECRET_KEY_REFRESH"
     JWT_SIGNING_ALGORITHM: str = "HS256"
+    ACTIVATION_TOKEN_EXPIRE_DAYS: int = 1
+    PASSWORD_RESET_TOKEN_EXPIRE_DAYS: int = 1
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    LOGIN_TIME_DAYS: int = 7
 
     def model_post_init(self, __context: dict[str, Any] | None = None) -> None:
         object.__setattr__(self, "PATH_TO_DB", ":memory:")
