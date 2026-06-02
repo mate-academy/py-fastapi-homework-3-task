@@ -96,14 +96,14 @@ async def activate_user(
     )
     existing_user = existing_user.scalars().first()
 
+    if not existing_user:
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
+
     if existing_user.is_active:
         raise HTTPException(
             status_code=400,
             detail="User account is already active."
         )
-
-    if not existing_user:
-        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     activation_token = await db.execute(
         select(ActivationTokenModel).where(ActivationTokenModel.user_id == existing_user.id)
@@ -159,6 +159,7 @@ async def reset_password_complete(
             select(UserModel).where(UserModel.email == user_data.email)
         )
         existing_user = existing_user.scalars().first()
+
         if existing_user is None or not existing_user.is_active:
             raise HTTPException(
                 status_code=400,
