@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-from typing import cast
 import secrets
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
@@ -31,24 +30,32 @@ router = APIRouter()
 async def register(user: UserRegistrationRequestSchema, db: AsyncSession = Depends(get_db)):
     user_group = await db.execute(select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER))
     user_group = user_group.scalar_one_or_none()
+
     db_user = await db.execute(select(UserModel).where(UserModel.email == user.email))
     db_user = db_user.scalar_one_or_none()
+
     if db_user:
         raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
-    hashed = hash_password(user.password)
+
     try:
-        new_user = UserModel(email=user.email, _hashed_password=hashed, group=user_group)
+        new_user = UserModel.create(
+            email=user.email,
+            raw_password=user.password,
+            group_id=user_group.id
+        )
         db.add(new_user)
         await db.flush()
 
-        activation_token = ActivationTokenModel(user_id=cast(int, new_user.id))
+        activation_token = ActivationTokenModel(user_id=new_user.id)
         db.add(activation_token)
 
         await db.commit()
         await db.refresh(new_user)
+
     except Exception:
         await db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred during user creation.")
+
     return new_user
 
 
@@ -112,6 +119,7 @@ async def password_reset(user_info: PasswordResetRequestSchema, db: AsyncSession
 async def password_reset_complete(user_info: TokenRefreshRequestSchema, db: AsyncSession = Depends(get_db)):
     db_user = await db.execute(select(UserModel).where(UserModel.email == user_info.email))
     db_user = db_user.scalar_one_or_none()
+
     if db_user:
         result = await db.execute(
             select(PasswordResetTokenModel).where(
@@ -122,31 +130,30 @@ async def password_reset_complete(user_info: TokenRefreshRequestSchema, db: Asyn
             )
         )
         db_token = result.scalar_one_or_none()
-        if not db_token:
-            await db.execute(
-                delete(PasswordResetTokenModel).where(
-                    PasswordResetTokenModel.user_id == db_user.id
-                )
-            )
-            await db.commit()
 
+        if not db_token:
+            await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == db_user.id))
+            await db.commit()
             raise HTTPException(status_code=400, detail="Invalid email or token.")
+
         expires_at = db_token.expires_at.replace(tzinfo=timezone.utc)
         if expires_at < datetime.now(timezone.utc):
             await db.delete(db_token)
             await db.commit()
             raise HTTPException(status_code=400, detail="Invalid email or token.")
+
         hashed = hash_password(user_info.password)
         try:
             db_user._hashed_password = hashed
-            await db.flush()
             await db.delete(db_token)
             await db.commit()
             await db.refresh(db_user)
         except Exception:
             await db.rollback()
             raise HTTPException(status_code=500, detail="An error occurred while resetting the password.")
+
         return TokenRefreshResponseSchema(message="Password reset successfully.")
+
     raise HTTPException(status_code=400, detail="Invalid email or token.")
 
 
