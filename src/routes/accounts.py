@@ -1,12 +1,9 @@
 from datetime import datetime, timezone, timedelta
 from typing import cast
 import secrets
-from jose import JWTError, jwt
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.sql.selectable import and_
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
@@ -20,7 +17,6 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import TokenExpiredError
-from exceptions.security import BaseSecurityError
 from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema, MessageResponseSchema, \
     UserActivationRequestSchema, PasswordResetCompleteRequestSchema, PasswordResetRequestSchema, \
     TokenRefreshResponseSchema, TokenRefreshRequestSchema, UserLoginResponseSchema, UserLoginRequestSchema
@@ -45,7 +41,7 @@ async def register(user: UserRegistrationRequestSchema, db: AsyncSession = Depen
         db.add(new_user)
         await db.flush()
 
-        activation_token = ActivationTokenModel(user_id=new_user.id)
+        activation_token = ActivationTokenModel(user_id=cast(int, new_user.id))
         db.add(activation_token)
 
         await db.commit()
@@ -144,6 +140,7 @@ async def password_reset_complete(user_info: TokenRefreshRequestSchema, db: Asyn
         try:
             db_user._hashed_password = hashed
             await db.flush()
+            await db.delete(db_token)
             await db.commit()
             await db.refresh(db_user)
         except Exception:
