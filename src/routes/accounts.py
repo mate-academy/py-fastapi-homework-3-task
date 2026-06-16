@@ -16,9 +16,9 @@ from database import (
     RefreshTokenModel
 )
 from exceptions import TokenExpiredError
-from schemas import UserRegistrationResponseSchema, UserRegistrationRequestSchema, MessageResponseSchema, \
-    UserActivationRequestSchema, PasswordResetCompleteRequestSchema, PasswordResetRequestSchema, \
-    TokenRefreshResponseSchema, TokenRefreshRequestSchema, UserLoginResponseSchema, UserLoginRequestSchema
+from schemas import (UserRegistrationResponseSchema, UserRegistrationRequestSchema, MessageResponseSchema,
+    UserActivationRequestSchema, PasswordResetCompleteRequestSchema, PasswordResetRequestSchema,
+    TokenRefreshResponseSchema, TokenRefreshRequestSchema, UserLoginResponseSchema, UserLoginRequestSchema)
 from schemas.accounts import TokenAccessRefreshResponseSchema, TokenAccessRefreshRequestSchema
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password, verify_password
