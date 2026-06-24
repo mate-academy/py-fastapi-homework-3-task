@@ -23,7 +23,7 @@ from schemas.accounts import (
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     PasswordResetRequestSchema,
-    PasswordResetCompleteSchema,
+    PasswordResetCompleteRequestSchema,
     UserLoginRequestSchema,
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
@@ -258,29 +258,27 @@ async def request_password_reset(
     },
 )
 async def reset_password_complete(
-    reset_data: PasswordResetCompleteSchema,
-    db: AsyncSession = Depends(get_db),
+        reset_data: PasswordResetCompleteRequestSchema,
+        db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """
-    Complete the password reset using the provided token and set a new password.
+    user_stmt = select(UserModel).where(UserModel.email == reset_data.email)
+    user_result = await db.execute(user_stmt)
+    user = user_result.scalars().first()
 
-    :param reset_data: Payload with email, reset token, and new password.
-    :param db: Async database session.
-    :return: Success message dict.
-    :raises HTTPException 400: If the token is invalid, expired, or the user is inactive.
-    :raises HTTPException 500: If a database error occurs while updating the password.
-    """
-    stmt = (
-        select(PasswordResetTokenModel)
-        .join(UserModel)
-        .where(UserModel.email == reset_data.email)
-        .where(PasswordResetTokenModel.token == reset_data.token)
-        .options(joinedload(PasswordResetTokenModel.user))
-    )
-    result = await db.execute(stmt)
-    token_record = result.scalars().first()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token.",
+        )
 
-    if not token_record:
+    token_stmt = select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
+    token_result = await db.execute(token_stmt)
+    token_record = token_result.scalars().first()
+
+    if not token_record or token_record.token != reset_data.token:
+        if token_record:
+            await db.delete(token_record)
+            await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email or token.",
@@ -295,15 +293,8 @@ async def reset_password_complete(
             detail="Invalid email or token.",
         )
 
-    user = token_record.user
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token.",
-        )
-
     try:
-        user.password = reset_data.password  # hashed via model setter / validator
+        user.password = reset_data.password
         await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
@@ -319,7 +310,7 @@ async def reset_password_complete(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     summary="User login",
     description=(
         "<h3>Authenticate a user with their email and password. "
@@ -412,7 +403,7 @@ async def login_user(
 
 
 @router.post(
-    "/api/v1/accounts/refresh/",
+    "/refresh/",
     response_model=TokenRefreshResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Refresh access token",
