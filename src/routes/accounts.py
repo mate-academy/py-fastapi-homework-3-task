@@ -20,6 +20,7 @@ from database import (
 )
 from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 
 from schemas.accounts import (
     UserRegistrationRequestSchema, UserRegistrationResponseSchema,
@@ -38,7 +39,6 @@ SessionDep = Annotated[AsyncSession, Depends(get_db)]
 async def register_user(
         payload: UserRegistrationRequestSchema,
         db: SessionDep,
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ):
     stmt = select(UserModel).filter(UserModel.email == payload.email)
     res = await db.execute(stmt)
@@ -163,43 +163,48 @@ async def request_password_reset(payload: PasswordResetRequestSchema, db: Sessio
 @router.post("/reset-password/complete/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
 async def complete_password_reset(
         payload: PasswordResetCompleteRequestSchema,
-        db: SessionDep,
-        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+        db: SessionDep
 ):
     user_stmt = select(UserModel).filter(UserModel.email == payload.email)
     user_res = await db.execute(user_stmt)
     user_obj = user_res.scalar()
 
+    invalid_error = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid email or token."
+    )
+
     if not user_obj:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
+        raise invalid_error
 
     active_user = cast(UserModel, user_obj)
 
     if not active_user.is_active:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
+        raise invalid_error
 
     token_stmt = select(PasswordResetTokenModel).filter(PasswordResetTokenModel.user_id == active_user.id)
     token_res = await db.execute(token_stmt)
     token_obj = token_res.scalar()
 
     if not token_obj:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
+        raise invalid_error
 
     valid_token = cast(PasswordResetTokenModel, token_obj)
 
-    if valid_token.token != payload.token:
+    async def invalidate_token_and_raise():
         await db.delete(valid_token)
         await db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
+        raise invalid_error
+
+    if valid_token.token != payload.token:
+        await invalidate_token_and_raise()
 
     expires_at = cast(datetime, valid_token.expires_at).replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_at:
-        await db.delete(valid_token)
-        await db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token.")
+        await invalidate_token_and_raise()
 
     try:
-        active_user.password = payload.password
+        active_user._hashed_password = hash_password(payload.password)
         await db.delete(valid_token)
         await db.commit()
         return {"message": "Password reset successfully."}
