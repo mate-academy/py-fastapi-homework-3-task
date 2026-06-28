@@ -35,7 +35,7 @@ router = APIRouter()
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 
 
-@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/accounts/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
 async def register_user(
         payload: UserRegistrationRequestSchema,
         db: SessionDep,
@@ -89,7 +89,7 @@ async def register_user(
         )
 
 
-@router.post("/activate/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
+@router.post("/accounts/activate/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
 async def activate_user(payload: UserActivationRequestSchema, db: SessionDep):
     user_stmt = select(UserModel).filter(UserModel.email == payload.email)
     user_res = await db.execute(user_stmt)
@@ -128,7 +128,7 @@ async def activate_user(payload: UserActivationRequestSchema, db: SessionDep):
     return {"message": "User account activated successfully."}
 
 
-@router.post("/password-reset/request/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
+@router.post("/accounts/password-reset/request/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
 async def request_password_reset(payload: PasswordResetRequestSchema, db: SessionDep):
     success_msg = {"message": "If you are registered, you will receive an email with instructions."}
 
@@ -160,7 +160,11 @@ async def request_password_reset(payload: PasswordResetRequestSchema, db: Sessio
     return success_msg
 
 
-@router.post("/reset-password/complete/", response_model=MessageResponseSchema, status_code=status.HTTP_200_OK)
+@router.post(
+    "/accounts/reset-password/complete/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK
+)
 async def complete_password_reset(
         payload: PasswordResetCompleteRequestSchema,
         db: SessionDep
@@ -216,7 +220,7 @@ async def complete_password_reset(
         )
 
 
-@router.post("/login/", response_model=UserLoginResponseSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/accounts/login/", response_model=UserLoginResponseSchema, status_code=status.HTTP_201_CREATED)
 async def login_user(
     payload: UserLoginRequestSchema,
     db: SessionDep,
@@ -263,7 +267,7 @@ async def login_user(
         )
 
 
-@router.post("/refresh/", response_model=TokenRefreshResponseSchema, status_code=status.HTTP_200_OK)
+@router.post("/accounts/refresh/", response_model=TokenRefreshResponseSchema, status_code=status.HTTP_200_OK)
 async def refresh_access_token(
     payload: TokenRefreshRequestSchema,
     db: SessionDep,
