@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import cast
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from exceptions import BaseSecurityError
@@ -95,28 +96,20 @@ async def activate_account(
         )
     )
 
-    # token missing, wrong, or expired → same generic error
-    now = datetime.now(timezone.utc)
-    if token_record:
-        expires_at = token_record.expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if not token_record:
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    if not token_record or expires_at < now:
-        raise HTTPException(
-            status_code=400, detail="Invalid or expired activation token."
-        )
+    expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
     user = token_record.user
     if user.is_active:
-        raise HTTPException(
-            status_code=400, detail="User account is already active."
-        )
+        raise HTTPException(status_code=400, detail="User account is already active.")
 
     user.is_active = True
     await db.delete(token_record)
     await db.commit()
-
     return MessageResponseSchema(message="User account activated successfully.")
 
 
@@ -162,17 +155,15 @@ async def reset_password_complete(
         )
     )
 
-    # decide if the token is valid (exists, matches, not expired)
+    # ↓↓↓ this is the block that changed ↓↓↓
     token_valid = False
     if token_record:
-        expires_at = token_record.expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
         if token_record.token == reset_data.token and expires_at > datetime.now(timezone.utc):
             token_valid = True
+    # ↑↑↑ end of changed block ↑↑↑
 
     if not token_valid:
-        # a bad/expired token gets cleaned up
         if token_record:
             await db.execute(
                 delete(PasswordResetTokenModel).where(
@@ -263,8 +254,14 @@ async def refresh_access_token(
             RefreshTokenModel.token == token_data.refresh_token
         )
     )
+
+    # ↓↓↓ the two checks ↓↓↓
     if not refresh_token_record:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
+
+    if refresh_token_record.user_id != user_id:
+        raise HTTPException(status_code=401, detail="Refresh token not found.")
+    # ↑↑↑ end ↑↑↑
 
     user = await db.scalar(select(UserModel).where(UserModel.id == user_id))
     if not user:
