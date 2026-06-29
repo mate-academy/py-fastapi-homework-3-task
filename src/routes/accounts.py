@@ -4,6 +4,7 @@ from typing import cast
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -155,13 +156,11 @@ async def reset_password_complete(
         )
     )
 
-    # ↓↓↓ this is the block that changed ↓↓↓
     token_valid = False
     if token_record:
         expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
         if token_record.token == reset_data.token and expires_at > datetime.now(timezone.utc):
             token_valid = True
-    # ↑↑↑ end of changed block ↑↑↑
 
     if not token_valid:
         if token_record:
@@ -174,7 +173,7 @@ async def reset_password_complete(
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     try:
-        user.password = reset_data.password
+        user._hashed_password = hash_password(reset_data.password)
         await db.execute(
             delete(PasswordResetTokenModel).where(
                 PasswordResetTokenModel.user_id == user.id
@@ -255,13 +254,11 @@ async def refresh_access_token(
         )
     )
 
-    # ↓↓↓ the two checks ↓↓↓
     if not refresh_token_record:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
 
     if refresh_token_record.user_id != user_id:
         raise HTTPException(status_code=401, detail="Refresh token not found.")
-    # ↑↑↑ end ↑↑↑
 
     user = await db.scalar(select(UserModel).where(UserModel.id == user_id))
     if not user:
