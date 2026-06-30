@@ -121,6 +121,8 @@ async def activate_account(
 
     expires_at = cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_at:
+        await db.delete(token_record)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token."
@@ -198,7 +200,11 @@ async def complete_password_reset(
         )
 
     try:
-        user.password = data.password
+        if hasattr(user, "set_password"):
+            user.set_password(data.password)
+        else:
+            user.password = data.password
+
         await db.delete(token_record)
         await db.commit()
         return {"message": "Password reset successfully."}
@@ -285,6 +291,13 @@ async def refresh_access_token(
             detail="Refresh token not found."
         )
 
+    jwt_user_id = decoded_payload.get("user_id")
+    if jwt_user_id != db_token.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token integrity validation failed."
+        )
+
     expires_at = cast(datetime, db_token.expires_at).replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_at:
         raise HTTPException(
@@ -292,9 +305,7 @@ async def refresh_access_token(
             detail="Token has expired."
         )
 
-    user_id = decoded_payload.get("user_id") or getattr(db_token, "user_id", None)
-
-    user_stmt = select(UserModel).where(UserModel.id == user_id)
+    user_stmt = select(UserModel).where(UserModel.id == db_token.user_id)
     user_res = await db.execute(user_stmt)
     user = user_res.scalars().first()
 
