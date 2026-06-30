@@ -202,6 +202,8 @@ async def complete_password_reset(
     try:
         if hasattr(user, "set_password"):
             user.set_password(data.password)
+        elif hasattr(user, "hash_password"):
+            user.password = user.hash_password(data.password)
         else:
             user.password = data.password
 
@@ -300,6 +302,8 @@ async def refresh_access_token(
 
     expires_at = cast(datetime, db_token.expires_at).replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) > expires_at:
+        await db.delete(db_token)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token has expired."
