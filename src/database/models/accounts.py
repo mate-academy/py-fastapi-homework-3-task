@@ -1,3 +1,4 @@
+from __future__ import annotations
 import enum
 from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
@@ -21,10 +22,10 @@ from sqlalchemy.orm import (
     validates
 )
 
-from database import Base
-from database.validators import accounts as validators
-from security.passwords import hash_password, verify_password
-from security.utils import generate_secure_token
+from src.database.models.base import Base
+from src.database.validators import accounts as validators
+from src.security.passwords import hash_password, verify_password
+from src.security.utils import generate_secure_token
 
 
 class UserGroupEnum(str, enum.Enum):
@@ -41,6 +42,8 @@ class GenderEnum(str, enum.Enum):
 class UserGroupModel(Base):
     __tablename__ = "user_groups"
 
+    __table_args__ = {"extend_existing": True}
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[UserGroupEnum] = mapped_column(Enum(UserGroupEnum), nullable=False, unique=True)
 
@@ -52,6 +55,8 @@ class UserGroupModel(Base):
 
 class UserModel(Base):
     __tablename__ = "users"
+
+    __table_args__ = {"extend_existing": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
@@ -113,13 +118,24 @@ class UserModel(Base):
     def password(self) -> None:
         raise AttributeError("Password is write-only. Use the setter to set the password.")
 
+    @property
+    def hashed_password(self) -> str:
+        """Getter for compatibility with old authorization code."""
+        return self._hashed_password
+
     @password.setter
     def password(self, raw_password: str) -> None:
         """
         Set the user's password after validating its strength and hashing it.
         """
-        validators.validate_password_strength(raw_password)
-        self._hashed_password = hash_password(raw_password)
+        try:
+            validators.validate_password_strength(raw_password)
+        except ValueError as e:
+            if len(raw_password) < 8:
+                raise ValueError("Password must contain at least 8 characters.")
+            raise e
+
+        self._hashed_password = hash_password(raw_password)  # type: ignore
 
     def verify_password(self, raw_password: str) -> bool:
         """
@@ -149,7 +165,10 @@ class UserProfileModel(Base):
         unique=True)
     user: Mapped[UserModel] = relationship("UserModel", back_populates="profile")
 
-    __table_args__ = (UniqueConstraint("user_id"),)
+    __table_args__ = (
+        UniqueConstraint("user_id"),
+        {"extend_existing": True}
+    )
 
     def __repr__(self):
         return (
@@ -182,7 +201,10 @@ class ActivationTokenModel(TokenBaseModel):
 
     user: Mapped[UserModel] = relationship("UserModel", back_populates="activation_token")
 
-    __table_args__ = (UniqueConstraint("user_id"),)
+    __table_args__ = (
+        UniqueConstraint('user_id'),
+        {"extend_existing": True}
+    )
 
     def __repr__(self):
         return f"<ActivationTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
@@ -193,7 +215,10 @@ class PasswordResetTokenModel(TokenBaseModel):
 
     user: Mapped[UserModel] = relationship("UserModel", back_populates="password_reset_token")
 
-    __table_args__ = (UniqueConstraint("user_id"),)
+    __table_args__ = (
+        UniqueConstraint('user_id'),
+        {"extend_existing": True}
+    )
 
     def __repr__(self):
         return f"<PasswordResetTokenModel(id={self.id}, token={self.token}, expires_at={self.expires_at})>"
@@ -201,6 +226,8 @@ class PasswordResetTokenModel(TokenBaseModel):
 
 class RefreshTokenModel(TokenBaseModel):
     __tablename__ = "refresh_tokens"
+
+    __table_args__ = {"extend_existing": True}
 
     user: Mapped[UserModel] = relationship("UserModel", back_populates="refresh_tokens")
     token: Mapped[str] = mapped_column(

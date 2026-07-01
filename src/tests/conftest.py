@@ -1,19 +1,20 @@
 import pytest_asyncio
+from src.routes.accounts import get_db
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from config import get_settings
-from database import (
+from src.config import get_settings
+from src.database import (
     reset_database,
     get_db_contextmanager,
     UserGroupEnum,
     UserGroupModel
 )
-from database.populate import CSVDatabaseSeeder
-from main import app
-from security.interfaces import JWTAuthManagerInterface
-from security.token_manager import JWTAuthManager
+from src.database.populate import CSVDatabaseSeeder
+from src.main import app
+from src.security.interfaces import JWTAuthManagerInterface
+from src.security.token_manager import JWTAuthManager
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
@@ -28,10 +29,18 @@ async def reset_db():
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client():
+async def client(db_session):
     """Provide an asynchronous test client for making HTTP requests."""
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as async_client:
+
+    async def _override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = _override_get_db
+
+    async with AsyncClient(app=app, base_url="http://test") as async_client:
         yield async_client
+
+    app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture(scope="function")
