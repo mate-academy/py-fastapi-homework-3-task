@@ -267,7 +267,9 @@ async def reset_password(
         )
 
     try:
-        user.password = reset_data.password
+        user.password = (
+            reset_data.password
+        )  # У моделі UseeModel є setter, який виконує хешування паролю
         await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
@@ -360,7 +362,7 @@ async def login_user(
 
 
 @router.post(
-    "/refresh/",
+    "/refresh/",  # router підключений з префіксом "/api/v1/accounts"
     response_model=TokenRefreshResponseSchema,
     status_code=status.HTTP_200_OK,
     summary="Refresh access token",
@@ -403,6 +405,11 @@ async def refresh_access_token(
     refresh_token_record = result.scalars().first()
 
     if refresh_token_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
+        )
+
+    if user_id != refresh_token_record.user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found."
         )
