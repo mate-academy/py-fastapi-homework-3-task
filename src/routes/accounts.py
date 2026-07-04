@@ -12,11 +12,13 @@ from database import (
     UserGroupModel,
     UserGroupEnum,
     ActivationTokenModel,
+    PasswordResetTokenModel,
 )
 from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
+    PasswordResetRequestSchema,
     MessageResponseSchema,
 )
 
@@ -149,3 +151,41 @@ async def activate_account(
     await db.commit()
 
     return MessageResponseSchema(message="User account activated successfully.")
+
+
+@router.post(
+    "/password-reset/request/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+    summary="Request a password reset token",
+    description="Request a password reset token for an active user account. "
+)
+async def request_password_reset_token(
+        reset_data: PasswordResetRequestSchema,
+        db: AsyncSession = Depends(get_db),
+) -> MessageResponseSchema:
+    stmt = select(UserModel).where(UserModel.email == reset_data.email)
+    result = await db.execute(stmt)
+    user = result.scalars().first()
+
+    try:
+        if user and user.is_active:
+            stmt = select(PasswordResetTokenModel).where(
+                PasswordResetTokenModel.user_id == user.id
+            )
+            result = await db.execute(stmt)
+            existing_token = result.scalars().first()
+
+            if existing_token:
+                await db.delete(existing_token)
+
+            reset_token = PasswordResetTokenModel(user_id=cast(int, user.id))
+            db.add(reset_token)
+
+            await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+
+    return MessageResponseSchema(
+        message="If you are registered, you will receive an email with instructions."
+    )

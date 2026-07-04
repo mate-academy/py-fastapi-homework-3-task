@@ -25,5 +25,9 @@ class UserActivationRequestSchema(BaseModel):
     token: str
 
 
+class PasswordResetRequestSchema(BaseModel):
+    email: EmailStr
+
+
 class MessageResponseSchema(BaseModel):
     message: str
