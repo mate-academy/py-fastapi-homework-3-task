@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import contains_eager
 
 from config import BaseAppSettings, get_jwt_auth_manager, get_settings
 from database import (
@@ -125,6 +126,7 @@ async def activate_account(
     stmt = (
         select(ActivationTokenModel)
         .join(UserModel)
+        .options(contains_eager(ActivationTokenModel.user))
         .where(
             UserModel.email == activation_data.email,
             ActivationTokenModel.token == activation_data.token,
