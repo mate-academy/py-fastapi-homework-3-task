@@ -237,6 +237,7 @@ async def login_user(
         ) from e
 
 
+# Mounted in main.py under /api/v1/accounts.
 @router.post("/refresh/", response_model=schemas.TokenRefreshResponseSchema, status_code=status.HTTP_200_OK)
 async def refresh(
     refresh_request: schemas.TokenRefreshRequestSchema,
