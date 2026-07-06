@@ -2,10 +2,8 @@ from datetime import datetime, timezone
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -17,7 +15,6 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel
 )
-from exceptions import BaseSecurityError
 from exceptions.security import InvalidTokenError, TokenExpiredError
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password
@@ -138,7 +135,7 @@ async def request_password_reset(
             db.add(new_password_reset_token)
             await db.commit()
         except Exception:
-            await db.rollback
+            await db.rollback()
 
     return schemas.MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
 
@@ -179,6 +176,7 @@ async def complete_password_reset(
 
     try:
         user._hashed_password = hash_password(password_reset_complete_request.password)
+        await db.delete(stored_reset_password_token)
         await db.commit()
 
         return schemas.MessageResponseSchema(message="Password reset successfully.")
@@ -194,7 +192,8 @@ async def complete_password_reset(
 async def login_user(
     login: schemas.UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
 ):
     user = await get_user_by_email(email=login.email, db=db)
     if not user or not user.verify_password(login.password):
@@ -216,7 +215,11 @@ async def login_user(
         refresh_token = jwt_manager.create_refresh_token(
             {"user_id": user.id}
         )
-        refresh_token = RefreshTokenModel(user=user, token=refresh_token)
+        refresh_token = RefreshTokenModel.create(
+            user_id=user.id,
+            days_valid=settings.LOGIN_TIME_DAYS,
+            token=refresh_token,
+        )
         db.add(refresh_token)
         await db.commit()
         await db.refresh(refresh_token)
