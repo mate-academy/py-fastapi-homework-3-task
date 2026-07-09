@@ -1,11 +1,10 @@
 from datetime import datetime, timezone, timedelta
-from typing import cast, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 from exceptions import TokenExpiredError, InvalidTokenError
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
@@ -94,7 +93,7 @@ async def activate_user(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User with {user_token_info.email} not found."
+            detail="Invalid or expired activation token."
         )
     if user.is_active:
         raise HTTPException(
@@ -206,7 +205,7 @@ async def reset_user_password(
         await db.commit()
 
     except SQLAlchemyError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password."
