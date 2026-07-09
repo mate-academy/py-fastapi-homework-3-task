@@ -5,7 +5,7 @@ from database import accounts_validators
 from database.models.accounts import UserGroupEnum
 
 
-class UserSchema(BaseModel):
+class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
@@ -18,10 +18,6 @@ class UserSchema(BaseModel):
     @classmethod
     def validate_email(cls, value: EmailStr):
         return accounts_validators.validate_email(user_email=value)
-
-
-class UserRegistrationRequestSchema(UserSchema):
-    role: UserGroupEnum = UserGroupEnum.USER
 
 
 class UserRegistrationResponseSchema(BaseModel):

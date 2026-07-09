@@ -57,7 +57,7 @@ async def register_user(
                 detail=f"A user with this email {user_info.email} already exists."
             )
 
-        group = await db.scalar(select(UserGroupModel).where(UserGroupModel.name == user_info.role))
+        group = await db.scalar(select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER))
         user = UserModel.create(
             email=user_info.email,
             raw_password=user_info.password,
@@ -177,7 +177,10 @@ async def reset_user_password(
             )
 
         token = await db.scalar(
-            select(PasswordResetTokenModel).where(PasswordResetTokenModel.token == info_for_reset.token)
+            select(PasswordResetTokenModel).where(
+                PasswordResetTokenModel.token == info_for_reset.token,
+                PasswordResetTokenModel.user_id == user.id
+            )
         )
         token_user = await db.scalar(
             select(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id)
@@ -258,7 +261,7 @@ async def login_user(
         await db.commit()
 
     except SQLAlchemyError:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request."
