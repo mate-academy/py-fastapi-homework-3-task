@@ -61,6 +61,12 @@ async def register(
     result = await db.execute(stmt)
     user_group = result.scalars().first()
 
+    if user_group is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Default user group not found."
+        )
+
     user = UserModel.create(
         email=payload.email,
         raw_password=payload.password,
@@ -271,6 +277,7 @@ async def login(
     payload: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
     jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
 ):
     stmt = select(UserModel).where(
         UserModel.email == payload.email.lower()
@@ -301,7 +308,7 @@ async def login(
     db.add(
         RefreshTokenModel.create(
             user_id=user.id,
-            days_valid=7,
+            days_valid=settings.LOGIN_TIME_DAYS,
             token=refresh_token,
         )
     )
@@ -345,6 +352,18 @@ async def refresh(
     )
     result = await db.execute(stmt)
     refresh_token = result.scalars().first()
+
+    if refresh_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
+
+    if refresh_token.user_id != data["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
 
     if refresh_token is None:
         raise HTTPException(
