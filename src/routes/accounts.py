@@ -147,10 +147,7 @@ async def activate_account(
         await db.commit()
     except SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while activating the account.",
-        )
+        raise
 
     return MessageResponseSchema(
         message="User account activated successfully."
@@ -325,6 +322,7 @@ async def login(
     return UserLoginResponseSchema(
         access_token=access_token,
         refresh_token=refresh_token,
+        token_type="bearer",
     )
 
 
@@ -362,12 +360,6 @@ async def refresh(
     if refresh_token.user_id != data["user_id"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token not found.",
-        )
-
-    if refresh_token is None:
-        raise HTTPException(
-            status_code=401,
             detail="Refresh token not found.",
         )
 
