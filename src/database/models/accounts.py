@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
-
+from passlib.context import CryptContext
 from sqlalchemy import (
     ForeignKey,
     String,
@@ -23,7 +23,7 @@ from sqlalchemy.orm import (
 
 from database import Base
 from database.validators import accounts as validators
-from security.passwords import hash_password, verify_password
+from security.passwords import hash_password
 from security.utils import generate_secure_token
 
 
@@ -48,6 +48,9 @@ class UserGroupModel(Base):
 
     def __repr__(self):
         return f"<UserGroupModel(id={self.id}, name={self.name})>"
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class UserModel(Base):
@@ -97,6 +100,9 @@ class UserModel(Base):
     def has_group(self, group_name: UserGroupEnum) -> bool:
         return self.group.name == group_name
 
+    def set_password(self, password: str):
+        self._hashed_password = pwd_context.hash(password)
+
     @classmethod
     def create(cls, email: str, raw_password: str, group_id: int | Mapped[int]) -> "UserModel":
         """
@@ -125,7 +131,7 @@ class UserModel(Base):
         """
         Verify the provided password against the stored hashed password.
         """
-        return verify_password(raw_password, self._hashed_password)
+        return pwd_context.verify(raw_password, self._hashed_password)
 
     @validates("email")
     def validate_email(self, key, value):
