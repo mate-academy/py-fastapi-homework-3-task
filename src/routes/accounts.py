@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, delete
@@ -121,7 +122,7 @@ async def activate(
     if (
         not db_activation_token
         or db_activation_token.user_id != db_user.id
-        or db_activation_token.expires_at.replace(tzinfo=timezone.utc)
+        or cast(datetime, db_activation_token.expires_at).replace(tzinfo=timezone.utc)
             < datetime.now(timezone.utc)
     ):
         raise HTTPException(
@@ -203,7 +204,7 @@ async def password_reset_complete(
         if (
             not db_password_reset_token
             or db_password_reset_token.token != request.token
-            or db_password_reset_token.expires_at.
+            or cast(datetime, db_password_reset_token.expires_at).
                 replace(tzinfo=timezone.utc) < datetime.now(timezone.utc)
         ):
             await db.execute(
@@ -217,7 +218,7 @@ async def password_reset_complete(
                 detail="Invalid email or token."
             )
         else:
-            db_user.password = request.password
+            db_user.password = request.password # password.setter handles validation and hashing
             await db.execute(
                 delete(PasswordResetTokenModel).where(
                     PasswordResetTokenModel.user_id == db_user.id
@@ -288,12 +289,12 @@ async def login(
     return {
         "access_token": access_token_str,
         "refresh_token": refresh_token_str,
-        "type": "bearer"
+        "token_type": "bearer"
     }
 
 
 @router.post(
-    "/refresh/",
+    "/api/v1/accounts/refresh/",
     response_model=TokenRefreshResponseSchema,
     status_code=200
 )
@@ -305,7 +306,7 @@ async def refresh(
     try:
         payload = jwt_manager.decode_refresh_token(request.refresh_token)
         user_id = int(payload["user_id"])
-    except TokenExpiredError or InvalidTokenError:
+    except (TokenExpiredError, InvalidTokenError):
         raise HTTPException(status_code=400, detail="Token has expired.")
 
     result = await db.execute(
