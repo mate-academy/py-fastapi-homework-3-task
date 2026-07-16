@@ -294,7 +294,7 @@ async def login(
 
 
 @router.post(
-    "/api/v1/accounts/refresh/",
+    "/refresh/",  # router prefix achieves the required path /api/v1/accounts/refresh/
     response_model=TokenRefreshResponseSchema,
     status_code=200
 )
