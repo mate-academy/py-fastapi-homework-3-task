@@ -31,6 +31,7 @@ from schemas.accounts import (
 
 router = APIRouter()
 
+
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -57,7 +58,6 @@ async def register(
     )
     user_group = result.scalar_one_or_none()
 
-
     if not user_group:
         raise HTTPException(
             status_code=500,
@@ -68,7 +68,7 @@ async def register(
         db_user = UserModel.create(
             email=str(user.email),
             raw_password=user.password,
-            group_id = user_group.id
+            group_id=user_group.id
         )
         db.add(db_user)
         await db.flush()
@@ -78,7 +78,7 @@ async def register(
 
         await db.commit()
         await db.refresh(db_user)
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=500,
@@ -138,6 +138,7 @@ async def activate(
 
     return {"message": "User account activated successfully."}
 
+
 @router.post(
     "/password-reset/request/",
     response_model=MessageResponseSchema,
@@ -169,6 +170,7 @@ async def password_reset_request(
         "message": "If you are registered, "
                    "you will receive an email with instructions."
     }
+
 
 @router.post(
     "/reset-password/complete/",
@@ -224,13 +226,14 @@ async def password_reset_complete(
             await db.commit()
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=500,
             detail="An error occurred while resetting the password."
         )
     return {"message": "Password reset successfully."}
+
 
 @router.post(
     "/login/",
@@ -275,7 +278,7 @@ async def login(
         )
         db.add(refresh_token)
         await db.commit()
-    except Exception as e:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=500,
@@ -287,6 +290,7 @@ async def login(
         "refresh_token": refresh_token_str,
         "type": "bearer"
     }
+
 
 @router.post(
     "/refresh/",
