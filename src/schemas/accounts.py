@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from database.validators import accounts as accounts_validators
 
+
 class BaseEmailPasswordSchema(BaseModel):
     email: EmailStr
     password: str
