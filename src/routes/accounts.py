@@ -262,6 +262,7 @@ async def login_user(
 
 
 @router.post("/refresh/", response_model=TokenRefreshResponseSchema)
+@router.post("/api/v1/accounts/refresh/", response_model=TokenRefreshResponseSchema)
 async def refresh_access_token(
     refresh_data: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
