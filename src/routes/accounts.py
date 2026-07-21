@@ -197,7 +197,7 @@ async def complete_password_reset(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def login_user(
     login_data: UserLoginRequestSchema,
@@ -215,6 +215,7 @@ async def login_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -223,6 +224,7 @@ async def login_user(
 
     access_token = jwt_manager.create_access_token({"user_id": user.id})
     refresh_token = jwt_manager.create_refresh_token({"user_id": user.id})
+
     token_record = RefreshTokenModel.create(
         user_id=cast(int, user.id),
         days_valid=settings.LOGIN_TIME_DAYS,
