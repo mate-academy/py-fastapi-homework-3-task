@@ -9,7 +9,7 @@ class UserRegistrationRequestSchema(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        accounts_validators.validate_password(v)
+        accounts_validators.validate_password_strength(v)
         return v
 
 
@@ -38,7 +38,7 @@ class PasswordResetCompleteSchema(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        accounts_validators.validate_password(v)
+        accounts_validators.validate_password_strength(v)
         return v
 
 
@@ -59,3 +59,15 @@ class RefreshTokenRequestSchema(BaseModel):
 
 class RefreshTokenResponseSchema(BaseModel):
     access_token: str
+
+
+UserActivationRequestSchema = AccountActivationRequestSchema
+PasswordResetCompleteRequestSchema = PasswordResetCompleteSchema
+UserLoginRequestSchema = LoginRequestSchema
+UserLoginResponseSchema = LoginResponseSchema
+TokenRefreshRequestSchema = RefreshTokenRequestSchema
+TokenRefreshResponseSchema = RefreshTokenResponseSchema
+
+
+class MessageResponseSchema(BaseModel):
+    message: str

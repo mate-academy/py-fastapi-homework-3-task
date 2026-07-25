@@ -1,4 +1,5 @@
-from datetime import datetime, timezone, cast
+from datetime import datetime, timezone
+from typing import cast
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -195,7 +196,7 @@ async def complete_password_reset(
         )
 
     try:
-        user.change_password(data.password)
+        user.password = data.password
         await db.delete(token_record)
         await db.commit()
         return {"message": "Password reset successfully."}
