@@ -31,6 +31,7 @@ from security.interfaces import JWTAuthManagerInterface
 from security.utils import generate_secure_token
 
 router = APIRouter()
+refresh_router = APIRouter()
 
 
 @router.post(
@@ -211,7 +212,7 @@ async def complete_password_reset(
 @router.post(
     "/login/",
     response_model=LoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def login_user(
     credentials: LoginRequestSchema,
@@ -259,8 +260,8 @@ async def login_user(
         )
 
 
-@router.post(
-    "/refresh/",
+@refresh_router.post(
+    "/api/v1/accounts/refresh/",
     response_model=RefreshTokenResponseSchema,
     status_code=status.HTTP_200_OK,
 )
