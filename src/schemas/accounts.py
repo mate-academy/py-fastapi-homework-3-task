@@ -31,7 +31,9 @@ class PasswordResetRequestSchema(BaseModel):
 
 
 class PasswordResetCompleteRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+    token: str
+    password: Annotated[str, AfterValidator(accounts_validators.validate_password_strength)]
 
 
 class UserLoginResponseSchema(BaseModel):

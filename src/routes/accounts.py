@@ -1,27 +1,20 @@
-from datetime import datetime, timezone
-from typing import cast
-
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import select, delete
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
 
-from config import get_jwt_auth_manager, get_settings, BaseAppSettings
-from database import (
-    get_db,
-    UserModel,
-    UserGroupModel,
-    UserGroupEnum,
-    ActivationTokenModel,
-    PasswordResetTokenModel,
-    RefreshTokenModel
-)
+from database import get_db
 from database.crud import users as users_crud
-from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, UserException
+from database.crud.exceptions import UserAlreadyExistsError, UserException
 from exceptions import BaseSecurityError
-from schemas import UserRegistrationRequestSchema, UserRegistrationResponseSchema, UserActivationRequestSchema, \
-    MessageResponseSchema, PasswordResetRequestSchema
+from schemas import (
+    UserRegistrationRequestSchema,
+    UserRegistrationResponseSchema,
+    UserActivationRequestSchema,
+    MessageResponseSchema,
+    PasswordResetRequestSchema,
+    PasswordResetCompleteRequestSchema
+)
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -35,10 +28,15 @@ async def register(
     try:
         new_user = await users_crud.create_user(session=db, user_data=user_data)
     except UserAlreadyExistsError:
-        raise HTTPException(status_code=409, detail=f"A user with this email {user_data.email} already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"A user with this email {user_data.email} already exists.")
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=409, detail=f"A user with this email {user_data.email} already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"A user with this email {user_data.email} already exists.")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred during user creation.")
     return UserRegistrationResponseSchema.model_validate(new_user)
 
 
@@ -50,7 +48,7 @@ async def activate_user(
     try:
         await users_crud.activate_user(session=db, email=data.email, token=data.token)
     except UserException as e:
-        raise HTTPException(status_code=409, detail=f"{e}")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{e}")
     return MessageResponseSchema(message="User account activated successfully.")
 
 
@@ -61,3 +59,19 @@ async def reset_password_request(
 ) -> MessageResponseSchema:
     await users_crud.create_password_reset_token(session=db, email=data.email)
     return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
+
+
+@router.post("/password-reset/complete/")
+async def reset_password_complete(
+        data: PasswordResetCompleteRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponseSchema:
+    try:
+        await users_crud.complete_password_reset(session=db, data=data)
+    except UserException:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Invalid email or token.")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred while resetting the password.")
+    return MessageResponseSchema(message="Password reset successfully.")

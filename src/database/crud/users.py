@@ -2,10 +2,11 @@ from datetime import datetime, timezone
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel, PasswordResetTokenModel
 from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, InvalidOrExpiredTokenError
-from schemas import UserRegistrationRequestSchema
+from schemas import UserRegistrationRequestSchema, PasswordResetCompleteRequestSchema
 
 
 async def create_user(session: AsyncSession, user_data: UserRegistrationRequestSchema) -> UserModel:
@@ -36,9 +37,9 @@ async def activate_user(session: AsyncSession, email: str, token: str) -> UserMo
     user_stmt = select(UserModel).where(UserModel.email == email)
     user = (await session.execute(user_stmt)).scalar_one_or_none()
     if user is None:
-        raise UserNotExistsError(f"A user with email {email} does no exist.")
+        raise UserNotExistsError(f"A user with email {email} does not exist.")
     if user.is_active:
-        raise UserNotExistsError(f"User account is already active.")
+        raise UserNotExistsError("User account is already active.")
 
     token_stmt = select(ActivationTokenModel).where(ActivationTokenModel.token == token)
     db_token = (await session.execute(token_stmt)).scalar_one_or_none()
@@ -63,3 +64,25 @@ async def create_password_reset_token(session: AsyncSession, email: str) -> bool
 
     await session.commit()
     return True
+
+
+async def complete_password_reset(session: AsyncSession, data: PasswordResetCompleteRequestSchema) -> None:
+    user_stmt = (
+        select(UserModel)
+        .options(selectinload(UserModel.password_reset_token))
+        .where(UserModel.email == data.email)
+    )
+    user = (await session.execute(user_stmt)).scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise UserNotExistsError(f"A user with email {data.email} does not exist.")
+    token = user.password_reset_token
+    if token is None or token.token != data.token:
+        raise InvalidOrExpiredTokenError("Invalid email or token.")
+    if token.expires_at < datetime.now(timezone.utc):
+        await session.delete(token)
+        await session.commit()
+        raise InvalidOrExpiredTokenError("Invalid email or token.")
+
+    user.password = data.password
+    await session.delete(token)
+    await session.commit()
