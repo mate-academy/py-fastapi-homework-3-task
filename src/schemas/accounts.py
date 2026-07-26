@@ -1,6 +1,49 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, EmailStr, AfterValidator, ConfigDict
 
 from database import accounts_validators
 
 
-# Write your code here
+class UserRegistrationRequestSchema(BaseModel):
+    email: Annotated[EmailStr, AfterValidator(accounts_validators.validate_email)]
+    password: Annotated[str, AfterValidator(accounts_validators.validate_password_strength)]
+
+
+class UserRegistrationResponseSchema(BaseModel):
+    id: int
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserActivationRequestSchema(BaseModel):
+    pass
+
+
+class MessageResponseSchema(BaseModel):
+    pass
+
+
+class PasswordResetRequestSchema(BaseModel):
+    pass
+
+
+class PasswordResetCompleteRequestSchema(BaseModel):
+    pass
+
+
+class UserLoginResponseSchema(BaseModel):
+    pass
+
+
+class UserLoginRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshResponseSchema(BaseModel):
+    pass
