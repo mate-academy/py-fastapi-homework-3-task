@@ -18,11 +18,12 @@ class UserRegistrationResponseSchema(BaseModel):
 
 
 class UserActivationRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+    token: str
 
 
 class MessageResponseSchema(BaseModel):
-    pass
+    message: str
 
 
 class PasswordResetRequestSchema(BaseModel):

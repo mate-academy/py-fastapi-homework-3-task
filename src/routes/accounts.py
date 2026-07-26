@@ -18,15 +18,16 @@ from database import (
     RefreshTokenModel
 )
 from database.crud import users as users_crud
-from database.crud.users import UserAlreadyExistsError
+from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, UserException
 from exceptions import BaseSecurityError
-from schemas import UserRegistrationRequestSchema, UserRegistrationResponseSchema
+from schemas import UserRegistrationRequestSchema, UserRegistrationResponseSchema, UserActivationRequestSchema, \
+    MessageResponseSchema
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
 
 
-@router.post("/register/")
+@router.post("/register/", status_code=status.HTTP_201_CREATED)
 async def register(
         user_data: UserRegistrationRequestSchema,
         db: AsyncSession = Depends(get_db)
@@ -39,3 +40,15 @@ async def register(
         await db.rollback()
         raise HTTPException(status_code=409, detail=f"A user with this email {user_data.email} already exists.")
     return UserRegistrationResponseSchema.model_validate(new_user)
+
+
+@router.post("/activate/")
+async def activate_user(
+        data: UserActivationRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponseSchema:
+    try:
+        await users_crud.activate_user(session=db, email=data.email, token=data.token)
+    except UserException as e:
+        raise HTTPException(status_code=409, detail=f"{e}")
+    return MessageResponseSchema(message="User account activated successfully.")
