@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import UserModel, UserGroupModel, UserGroupEnum
+from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel
 from schemas import UserRegistrationRequestSchema
 
 
@@ -25,7 +25,9 @@ async def create_user(session: AsyncSession, user_data: UserRegistrationRequestS
         raw_password=user_data.password,
         group_id=group.id,
     )
+    token = ActivationTokenModel(user=user)
     session.add(user)
+    session.add(token)
     await session.commit()
     await session.refresh(user)
     return user
