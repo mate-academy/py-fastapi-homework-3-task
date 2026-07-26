@@ -14,7 +14,11 @@ from database.populate import CSVDatabaseSeeder
 from main import app
 from security.interfaces import JWTAuthManagerInterface
 from security.token_manager import JWTAuthManager
+import os
 
+
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["MODE"] = "TEST"
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
 async def reset_db():

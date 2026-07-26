@@ -1,18 +1,19 @@
-from passlib.context import CryptContext
+import bcrypt
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    bcrypt__rounds=14,
-    deprecated="auto"
-)
+BCRYPT_ROUNDS = 14
+MAX_PASSWORD_BYTES = 72
+
+
+def _to_bytes(password: str) -> bytes:
+    """
+    Encode a password and truncate it to the maximum length supported by bcrypt.
+    """
+    return password.encode("utf-8")[:MAX_PASSWORD_BYTES]
 
 
 def hash_password(password: str) -> str:
     """
-    Hash a plain-text password using the configured password context.
-
-    This function takes a plain-text password and returns its bcrypt hash.
-    The bcrypt algorithm is used with a specified number of rounds for enhanced security.
+    Hash a plain-text password using bcrypt.
 
     Args:
         password (str): The plain-text password to hash.
@@ -20,15 +21,13 @@ def hash_password(password: str) -> str:
     Returns:
         str: The resulting hashed password.
     """
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt(rounds=BCRYPT_ROUNDS)
+    return bcrypt.hashpw(_to_bytes(password), salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain-text password against its hashed version.
-
-    This function compares a plain-text password with a hashed password and returns True
-    if they match, and False otherwise.
 
     Args:
         plain_password (str): The plain-text password provided by the user.
@@ -37,4 +36,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: True if the password is correct, False otherwise.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(_to_bytes(plain_password), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
