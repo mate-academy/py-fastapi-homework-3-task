@@ -21,7 +21,7 @@ from database.crud import users as users_crud
 from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, UserException
 from exceptions import BaseSecurityError
 from schemas import UserRegistrationRequestSchema, UserRegistrationResponseSchema, UserActivationRequestSchema, \
-    MessageResponseSchema
+    MessageResponseSchema, PasswordResetRequestSchema
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -52,3 +52,12 @@ async def activate_user(
     except UserException as e:
         raise HTTPException(status_code=409, detail=f"{e}")
     return MessageResponseSchema(message="User account activated successfully.")
+
+
+@router.post("/password-reset/request/")
+async def reset_password_request(
+        data: PasswordResetRequestSchema,
+        db: AsyncSession = Depends(get_db)
+) -> MessageResponseSchema:
+    await users_crud.create_password_reset_token(session=db, email=data.email)
+    return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")

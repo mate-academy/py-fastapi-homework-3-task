@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel
+from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel, PasswordResetTokenModel
 from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, InvalidOrExpiredTokenError
 from schemas import UserRegistrationRequestSchema
 
@@ -49,3 +49,17 @@ async def activate_user(session: AsyncSession, email: str, token: str) -> UserMo
     await session.delete(db_token)
     await session.commit()
     return user
+
+
+async def create_password_reset_token(session: AsyncSession, email: str) -> bool:
+    user_stmt = select(UserModel).where(UserModel.email == email)
+    user = (await session.execute(user_stmt)).scalar_one_or_none()
+    if user is None or not user.is_active:
+        return False
+    await session.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
+
+    new_token = PasswordResetTokenModel(user_id=user.id)
+    session.add(new_token)
+
+    await session.commit()
+    return True
