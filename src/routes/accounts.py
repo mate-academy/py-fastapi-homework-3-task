@@ -70,7 +70,9 @@ async def reset_password_request(
         db: AsyncSession = Depends(get_db)
 ) -> MessageResponseSchema:
     await users_crud.create_password_reset_token(session=db, email=data.email)
-    return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
+    return MessageResponseSchema(
+        message="If you are registered, you will receive an email with instructions."
+    )
 
 
 @router.post("/reset-password/complete/")
