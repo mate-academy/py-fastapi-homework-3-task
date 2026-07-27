@@ -21,7 +21,9 @@ from database.crud.exceptions import (
     InvalidOrExpiredTokenError,
     UserNotActivatedError,
     UserAlreadyActivatedError,
+    TokenNotFoundError,
 )
+from exceptions import TokenExpiredError
 from schemas import UserRegistrationRequestSchema, PasswordResetCompleteRequestSchema, UserLoginRequestSchema
 from security.interfaces import JWTAuthManagerInterface
 
@@ -136,3 +138,30 @@ async def login(
     session.add(refresh_token_db)
     await session.commit()
     return access_token, refresh_token
+
+
+async def refresh_access_token(
+        session: AsyncSession,
+        refresh_token: str,
+        jwt_manager: JWTAuthManagerInterface,
+) -> str:
+    decoded = jwt_manager.decode_refresh_token(refresh_token)
+    expires_at = datetime.fromtimestamp(decoded["exp"], timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise TokenExpiredError("Token has expired.")
+    token_stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == refresh_token)
+    token = (await session.execute(token_stmt)).scalar_one_or_none()
+    if token is None:
+        raise TokenNotFoundError("Refresh token not found.")
+    user_id = decoded["user_id"]
+    user_stmt = (
+        select(UserModel)
+        .options(selectinload(UserModel.refresh_tokens))
+        .where(UserModel.id == user_id)
+    )
+    user = (await session.execute(user_stmt)).scalar_one_or_none()
+    if user is None:
+        raise UserNotExistsError(f"A user with id {user_id} does not exist.")
+
+    access_token = jwt_manager.create_access_token(data={"user_id": user_id})
+    return access_token

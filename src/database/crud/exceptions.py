@@ -20,3 +20,7 @@ class UserAlreadyActivatedError(UserException):
 
 class InvalidOrExpiredTokenError(UserException):
     pass
+
+
+class TokenNotFoundError(UserException):
+    pass

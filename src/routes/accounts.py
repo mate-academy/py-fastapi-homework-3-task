@@ -11,7 +11,10 @@ from database.crud.exceptions import (
     UserException,
     UserNotActivatedError,
     UserNotExistsError,
+    InvalidOrExpiredTokenError,
+    TokenNotFoundError,
 )
+from exceptions import TokenExpiredError, InvalidTokenError
 from schemas import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
@@ -109,3 +112,24 @@ async def login(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="An error occurred while processing the request.")
     return UserLoginResponseSchema(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/refresh/")
+async def refresh_access_token(
+        data: TokenRefreshRequestSchema,
+        db: AsyncSession = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+) -> TokenRefreshResponseSchema:
+    try:
+        access_token = await users_crud.refresh_access_token(
+            session=db,
+            refresh_token=data.refresh_token,
+            jwt_manager=jwt_manager,
+        )
+    except (TokenExpiredError, InvalidTokenError, InvalidOrExpiredTokenError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Token has expired.")
+    except TokenNotFoundError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token not found.")
+    except UserNotExistsError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    return TokenRefreshResponseSchema(access_token=access_token)
