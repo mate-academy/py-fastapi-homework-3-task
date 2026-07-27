@@ -1,19 +1,25 @@
+from asyncpg import InvalidPasswordError
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.ext.asyncio import AsyncSession, session
 
+from config import BaseAppSettings, get_jwt_auth_manager, get_settings
 from database import get_db
 from database.crud import users as users_crud
-from database.crud.exceptions import UserAlreadyExistsError, UserException
-from exceptions import BaseSecurityError
+from database.crud.exceptions import (
+    UserAlreadyExistsError,
+    UserException,
+    UserNotActivatedError,
+    UserNotExistsError
+)
 from schemas import (
     UserRegistrationRequestSchema,
     UserRegistrationResponseSchema,
     UserActivationRequestSchema,
     MessageResponseSchema,
     PasswordResetRequestSchema,
-    PasswordResetCompleteRequestSchema
+    PasswordResetCompleteRequestSchema,
+    UserLoginRequestSchema, UserLoginResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -71,7 +77,32 @@ async def reset_password_complete(
     except UserException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid email or token.")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="An error occurred while resetting the password.")
     return MessageResponseSchema(message="Password reset successfully.")
+
+
+@router.post("/login/")
+async def login(
+        data: UserLoginRequestSchema,
+        db: AsyncSession = Depends(get_db),
+        jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+        settings: BaseAppSettings = Depends(get_settings),
+) -> UserLoginResponseSchema:
+    try:
+        access_token, refresh_token = await users_crud.login(
+            session=db,
+            data=data,
+            jwt_manager=jwt_manager,
+            settings=settings
+        )
+    except UserNotActivatedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+    except (UserNotExistsError, InvalidPasswordError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Invalid email or password.")
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="An error occurred while processing the request.")
+    return UserLoginResponseSchema(access_token=access_token, refresh_token=refresh_token)

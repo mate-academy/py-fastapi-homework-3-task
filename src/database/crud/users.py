@@ -1,12 +1,22 @@
 from datetime import datetime, timezone
 
+from asyncpg import InvalidPasswordError
+from fastapi import Depends
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel, PasswordResetTokenModel
-from database.crud.exceptions import UserAlreadyExistsError, UserNotExistsError, InvalidOrExpiredTokenError
-from schemas import UserRegistrationRequestSchema, PasswordResetCompleteRequestSchema
+from config import get_jwt_auth_manager, get_settings, BaseAppSettings
+from database import UserModel, UserGroupModel, UserGroupEnum, ActivationTokenModel, PasswordResetTokenModel, \
+    RefreshTokenModel
+from database.crud.exceptions import (
+    UserAlreadyExistsError,
+    UserNotExistsError,
+    InvalidOrExpiredTokenError,
+    UserNotActivatedError,
+)
+from schemas import UserRegistrationRequestSchema, PasswordResetCompleteRequestSchema, UserLoginRequestSchema
+from security.interfaces import JWTAuthManagerInterface
 
 
 async def create_user(session: AsyncSession, user_data: UserRegistrationRequestSchema) -> UserModel:
@@ -86,3 +96,30 @@ async def complete_password_reset(session: AsyncSession, data: PasswordResetComp
     user.password = data.password
     await session.delete(token)
     await session.commit()
+
+
+async def login(
+        session: AsyncSession, data: UserLoginRequestSchema,
+        jwt_manager: JWTAuthManagerInterface,
+        settings: BaseAppSettings
+) -> tuple[str, str]:
+    user_stmt = (
+        select(UserModel)
+        .options(selectinload(UserModel.password_reset_token))
+        .where(UserModel.email == data.email)
+    )
+    user = (await session.execute(user_stmt)).scalar_one_or_none()
+    if user is None:
+        raise UserNotExistsError(f"A user with email {data.email} does not exist.")
+    if not user.is_active:
+        raise UserNotActivatedError("User account is not activated.")
+    if not user.verify_password(data.password):
+        raise InvalidPasswordError("Invalid password.")
+
+    access_token = jwt_manager.create_access_token(data={"sub": user.email})
+    refresh_token = jwt_manager.create_refresh_token(data={"sub": user.email})
+    refresh_token_db = RefreshTokenModel.create(user.id, settings.LOGIN_TIME_DAYS, refresh_token)
+
+    session.add(refresh_token_db)
+    await session.commit()
+    return access_token, refresh_token

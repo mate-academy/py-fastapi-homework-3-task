@@ -10,6 +10,10 @@ class UserNotExistsError(UserException):
     pass
 
 
+class UserNotActivatedError(UserException):
+    pass
+
+
 class UserAlreadyActivatedError(UserException):
     pass
 
