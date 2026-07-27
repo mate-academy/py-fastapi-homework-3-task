@@ -1,7 +1,7 @@
 from asyncpg import InvalidPasswordError
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession, session
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import BaseAppSettings, get_jwt_auth_manager, get_settings
 from database import get_db
@@ -10,7 +10,7 @@ from database.crud.exceptions import (
     UserAlreadyExistsError,
     UserException,
     UserNotActivatedError,
-    UserNotExistsError
+    UserNotExistsError,
 )
 from schemas import (
     UserRegistrationRequestSchema,
@@ -19,7 +19,10 @@ from schemas import (
     MessageResponseSchema,
     PasswordResetRequestSchema,
     PasswordResetCompleteRequestSchema,
-    UserLoginRequestSchema, UserLoginResponseSchema,
+    UserLoginRequestSchema,
+    UserLoginResponseSchema,
+    TokenRefreshRequestSchema,
+    TokenRefreshResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -40,7 +43,7 @@ async def register(
         await db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT,
                             detail=f"A user with this email {user_data.email} already exists.")
-    except Exception:
+    except SQLAlchemyError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="An error occurred during user creation.")
     return UserRegistrationResponseSchema.model_validate(new_user)
@@ -54,7 +57,7 @@ async def activate_user(
     try:
         await users_crud.activate_user(session=db, email=data.email, token=data.token)
     except UserException as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"{e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{e}")
     return MessageResponseSchema(message="User account activated successfully.")
 
 
@@ -67,7 +70,7 @@ async def reset_password_request(
     return MessageResponseSchema(message="If you are registered, you will receive an email with instructions.")
 
 
-@router.post("/password-reset/complete/")
+@router.post("/reset-password/complete/")
 async def reset_password_complete(
         data: PasswordResetCompleteRequestSchema,
         db: AsyncSession = Depends(get_db)
@@ -83,7 +86,7 @@ async def reset_password_complete(
     return MessageResponseSchema(message="Password reset successfully.")
 
 
-@router.post("/login/")
+@router.post("/login/", status_code=status.HTTP_201_CREATED)
 async def login(
         data: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
@@ -102,7 +105,7 @@ async def login(
     except (UserNotExistsError, InvalidPasswordError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Invalid email or password.")
-    except Exception:
+    except SQLAlchemyError:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail="An error occurred while processing the request.")
     return UserLoginResponseSchema(access_token=access_token, refresh_token=refresh_token)
