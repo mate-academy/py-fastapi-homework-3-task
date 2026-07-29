@@ -76,3 +76,44 @@ async def register_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred during user creation."
         )
+
+
+@router.post("/activate/", response_model=accounts.MessageResponseSchema)
+async def activate_user_account(
+    data: accounts.UserActivationRequestSchema,
+    db: AsyncSession = Depends(get_db)
+):
+    user = await get_user_by_email(db, data.email)
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already activate."
+        )
+
+    activation_token_result = await db.execute(
+        select(ActivationTokenModel)
+        .where(ActivationTokenModel.token == user.activation_token)
+    )
+    activation_token = activation_token_result.scalar_one_or_none()
+    expires_at = cast(datetime, activation_token.expires_at).replace(
+        tzinfo=timezone.utc
+    )
+
+    if (
+        not activation_token
+        or data.token != activation_token.token
+        or datetime.now(timezone.utc) >= expires_at
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation token."
+        )
+
+    user.is_active = True
+    await db.commit()
+
+    await db.delete(activation_token)
+    await db.commit()
+
+    return {"message": "User account activated successfully."}
