@@ -94,7 +94,7 @@ async def activate_user_account(
     if user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is already activate."
+            detail="User account is already active."
         )
 
     activation_token_result = await db.execute(
