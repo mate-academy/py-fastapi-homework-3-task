@@ -58,7 +58,7 @@ async def register_user(
     try:
         group_result = await db.execute(
             select(UserGroupModel)
-            .where(UserGroupModel.name == UserGroupEnum.USER.value())
+            .where(UserGroupModel.name == UserGroupEnum.USER.value)
         )
         group = group_result.scalar_one()
         user = UserModel.create(
@@ -66,6 +66,11 @@ async def register_user(
             raw_password=data.password,
             group_id=group.id
         )
+
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
         activation_token = ActivationTokenModel(user_id=user.id)
 
         db.add(activation_token)
