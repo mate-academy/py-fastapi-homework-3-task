@@ -168,12 +168,27 @@ async def reset_password_completion(
 ) -> dict:
     user = await get_user_by_email(db, data.email)
 
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
     result = await db.execute(
         select(PasswordResetTokenModel)
         .where(PasswordResetTokenModel.user_id == user.id)
     )
     password_reset_token = result.scalar_one_or_none()
-    expires_at = cast(datetime, password_reset_token.expires_at)
+
+    if not password_reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
+    expires_at = cast(datetime, password_reset_token.expires_at).replace(
+        tzinfo=timezone.utc
+    )
 
     if (
         not password_reset_token
