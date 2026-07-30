@@ -201,7 +201,11 @@ async def reset_password_completion(
     }
 
 
-@router.post("/login/", response_model=accounts.UserLoginResponseSchema)
+@router.post(
+    "/login/",
+    response_model=accounts.UserLoginResponseSchema,
+    status_code=status.HTTP_201_CREATED
+)
 async def login(
     data: accounts.UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
@@ -223,10 +227,10 @@ async def login(
 
     try:
         access_token = jwt_auth_manager.create_access_token(
-            {"sub": user.email}
+            {"sub": user.email, "user_id": user.id}
         )
         refresh_token = jwt_auth_manager.create_refresh_token(
-            {"sub": user.email}
+            {"sub": user.email, "user_id": user.id}
         )
         refresh_token_instance = RefreshTokenModel(
             token=refresh_token,
