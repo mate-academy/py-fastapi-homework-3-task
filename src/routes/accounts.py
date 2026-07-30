@@ -254,6 +254,7 @@ async def login(
         db.add(refresh_token_instance)
         await db.commit()
     except SQLAlchemyError:
+        await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request."
