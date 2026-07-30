@@ -68,13 +68,13 @@ async def register_user(
         )
 
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        await db.flush()
 
         activation_token = ActivationTokenModel(user_id=user.id)
-
         db.add(activation_token)
+
         await db.commit()
+        await db.refresh(user)
 
         return user
     except SQLAlchemyError:
