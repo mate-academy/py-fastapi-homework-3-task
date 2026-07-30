@@ -120,7 +120,6 @@ async def activate_user_account(
         )
 
     user.is_active = True
-    await db.commit()
 
     await db.delete(activation_token)
     await db.commit()
