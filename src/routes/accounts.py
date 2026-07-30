@@ -19,6 +19,7 @@ from database import (
 )
 from exceptions import BaseSecurityError
 from security.interfaces import JWTAuthManagerInterface
+from security.passwords import hash_password
 from src.schemas import accounts
 
 
@@ -146,4 +147,50 @@ async def reset_password_request(
             "If you are registered, you will receive "
             "an email with instructions."
         )
+    }
+
+
+@router.post(
+    "/reset-password/complete/",
+    response_model=accounts.MessageResponseSchema
+)
+async def reset_password_completion(
+    data: accounts.PasswordResetCompleteRequestSchema,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    user = await get_user_by_email(db, data.email)
+
+    result = await db.execute(
+        select(PasswordResetTokenModel)
+        .where(PasswordResetTokenModel.user_id == user.id)
+    )
+    password_reset_token = result.scalar_one_or_none()
+    expires_at = cast(datetime, password_reset_token.expires_at)
+
+    if (
+        not password_reset_token
+        or password_reset_token.token != data.token
+        or datetime.now(timezone.utc) >= expires_at
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email or token."
+        )
+
+    try:
+        new_password_reset_token = PasswordResetTokenModel(user_id=user.id)
+
+        db.add(new_password_reset_token)
+        await db.commit()
+
+        await db.delete(password_reset_token)
+        await db.commit()
+    except SQLAlchemyError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while resetting the password."
+        )
+
+    return {
+        "message": "Password reset successfully."
     }
