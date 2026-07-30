@@ -135,7 +135,7 @@ async def reset_password_request(
 ) -> dict:
     user = await get_user_by_email(db, data.email)
 
-    if user:
+    if user and user.is_active:
         await db.execute(
             delete(PasswordResetTokenModel)
             .where(PasswordResetTokenModel.user_id == user.id)
