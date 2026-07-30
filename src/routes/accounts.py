@@ -191,22 +191,18 @@ async def reset_password_completion(
     )
 
     if (
-        not password_reset_token
-        or password_reset_token.token != data.token
+        password_reset_token.token != data.token
         or datetime.now(timezone.utc) >= expires_at
     ):
+        await db.delete(password_reset_token)
+        await db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid email or token."
         )
 
     try:
-        new_password_reset_token = PasswordResetTokenModel(user_id=user.id)
-
-        db.add(new_password_reset_token)
-        await db.commit()
-
-        await db.delete(password_reset_token)
+        user.password = data.password
         await db.commit()
     except SQLAlchemyError:
         raise HTTPException(
