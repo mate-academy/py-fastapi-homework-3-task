@@ -194,3 +194,50 @@ async def reset_password_completion(
     return {
         "message": "Password reset successfully."
     }
+
+
+@router.post("/login/", response_model=accounts.UserLoginResponseSchema)
+async def login(
+    data: accounts.UserLoginRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+) -> dict:
+    user = await get_user_by_email(db, data.email)
+
+    if not user or user.verify_password(data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password."
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is not activated."
+        )
+
+    try:
+        access_token = jwt_auth_manager.create_access_token(
+            {"sub": user.email}
+        )
+        refresh_token = jwt_auth_manager.create_refresh_token(
+            {"sub": user.email}
+        )
+        refresh_token_instance = RefreshTokenModel(
+            token=refresh_token,
+            user_id=user.id
+        )
+
+        db.add(refresh_token_instance)
+        await db.commit()
+    except BaseSecurityError:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing the request."
+        )
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
