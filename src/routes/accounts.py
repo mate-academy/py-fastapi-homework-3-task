@@ -209,7 +209,7 @@ async def login(
 ) -> dict:
     user = await get_user_by_email(db, data.email)
 
-    if not user or user.verify_password(data.password):
+    if not user or not user.verify_password(data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password."
@@ -235,7 +235,7 @@ async def login(
 
         db.add(refresh_token_instance)
         await db.commit()
-    except BaseSecurityError:
+    except SQLAlchemyError:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing the request."
