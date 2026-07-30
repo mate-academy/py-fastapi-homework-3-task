@@ -91,6 +91,12 @@ async def activate_user_account(
 ) -> dict:
     user = await get_user_by_email(db, data.email)
 
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with the given email {data.email} not found."
+        )
+
     if user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
