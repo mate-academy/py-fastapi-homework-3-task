@@ -241,3 +241,49 @@ async def login(
         "refresh_token": refresh_token,
         "token_type": "bearer",
     }
+
+
+@router.post(
+    "/refresh/",
+    response_model=accounts.TokenRefreshResponseSchema
+)
+async def refresh_access_token(
+    data: accounts.TokenRefreshRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
+) -> dict:
+    result = await db.execute(
+        select(RefreshTokenModel)
+        .where(RefreshTokenModel.token == data.refresh_token)
+    )
+    refresh_token_instance = result.scalar_one_or_none()
+
+    if not refresh_token_instance:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found."
+        )
+
+    expires_at = cast(datetime, refresh_token_instance.expires_at)
+
+    if datetime.now(timezone.utc) >= expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired."
+        )
+
+    user_result = await db.execute(
+        select(UserModel)
+        .options(joinedload(UserModel.refresh_tokens))
+        .where(UserModel.refresh_tokens.has(refresh_token_instance.token))
+    )
+    user = user_result.scalar_one_or_none()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found."
+        )
+
+    access_token = jwt_auth_manager.create_access_token({"sub": user.email})
+    return {"access_token": access_token}
