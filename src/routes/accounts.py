@@ -290,9 +290,10 @@ async def refresh_access_token(
             detail="Token has expired."
         )
 
+    to_decode = jwt_auth_manager.decode_refresh_token(refresh_token_instance.token)
     user_result = await db.execute(
-        select(RefreshTokenModel.user)
-        .where(RefreshTokenModel.token == refresh_token_instance.token)
+        select(UserModel)
+        .where(UserModel.id == to_decode["user_id"])
     )
     user = user_result.scalar_one_or_none()
 
@@ -302,5 +303,7 @@ async def refresh_access_token(
             detail="User not found."
         )
 
-    access_token = jwt_auth_manager.create_access_token({"sub": user.email})
+    access_token = jwt_auth_manager.create_access_token(
+        {"sub": user.email, "user_id": user.id}
+    )
     return {"access_token": access_token}
