@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, joinedload
@@ -257,6 +257,14 @@ async def refresh_access_token(
     db: AsyncSession = Depends(get_db),
     jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ) -> dict:
+    try:
+        jwt_auth_manager.verify_refresh_token_or_raise(data.refresh_token)
+    except BaseSecurityError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired."
+        )
+
     result = await db.execute(
         select(RefreshTokenModel)
         .where(RefreshTokenModel.token == data.refresh_token)
@@ -269,8 +277,9 @@ async def refresh_access_token(
             detail="Refresh token not found."
         )
 
-    expires_at = cast(datetime, refresh_token_instance.expires_at)
-
+    expires_at = cast(datetime, refresh_token_instance.expires_at).replace(
+        tzinfo=timezone.utc
+    )
     if datetime.now(timezone.utc) >= expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -278,9 +287,8 @@ async def refresh_access_token(
         )
 
     user_result = await db.execute(
-        select(UserModel)
-        .options(joinedload(UserModel.refresh_tokens))
-        .where(UserModel.refresh_tokens.has(refresh_token_instance.token))
+        select(RefreshTokenModel.user)
+        .where(RefreshTokenModel.token == refresh_token_instance.token)
     )
     user = user_result.scalar_one_or_none()
 
