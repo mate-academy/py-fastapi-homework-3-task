@@ -88,7 +88,7 @@ async def register_user(
 async def activate_user_account(
     data: accounts.UserActivationRequestSchema,
     db: AsyncSession = Depends(get_db)
-):
+) -> dict:
     user = await get_user_by_email(db, data.email)
 
     if user.is_active:
@@ -99,18 +99,21 @@ async def activate_user_account(
 
     activation_token_result = await db.execute(
         select(ActivationTokenModel)
-        .where(ActivationTokenModel.token == user.activation_token)
+        .where(ActivationTokenModel.user_id == user.id)
     )
     activation_token = activation_token_result.scalar_one_or_none()
+
+    if not activation_token or data.token != activation_token.token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation token."
+        )
+
     expires_at = cast(datetime, activation_token.expires_at).replace(
         tzinfo=timezone.utc
     )
 
-    if (
-        not activation_token
-        or data.token != activation_token.token
-        or datetime.now(timezone.utc) >= expires_at
-    ):
+    if datetime.now(timezone.utc) >= expires_at:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token."
