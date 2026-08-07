@@ -1,8 +1,6 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import get_jwt_auth_manager
@@ -18,6 +16,7 @@ from schemas import (
     UserLoginRequestSchema,
     TokenRefreshResponseSchema,
     TokenRefreshRequestSchema,
+    UserRegistrationResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
 
@@ -28,13 +27,14 @@ SessionDep = Annotated[AsyncSession, Depends(get_db)]
 JWTManager = Annotated[JWTAuthManagerInterface, Depends(get_jwt_auth_manager)]
 
 
-@router.post("/register/")
+@router.post(
+    "/register/",
+    response_model=UserRegistrationResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_user(db: SessionDep, user: UserRegistrationRequestSchema):
     user = await crud.create_user(db=db, user=user)
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content=jsonable_encoder(user),
-    )
+    return user
 
 
 @router.post("/activate/", response_model=MessageResponseSchema)

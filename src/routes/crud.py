@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import cast
 
 from exceptions import TokenExpiredError, InvalidTokenError
 from security.interfaces import JWTAuthManagerInterface
@@ -47,29 +48,27 @@ async def create_user(db: AsyncSession, user: UserRegistrationRequestSchema):
             UserGroupModel.name == UserGroupEnum.USER
         )
 
-        db_user = UserModel(
+        user_db = UserModel(
             email=user.email,
             _hashed_password=hashed,
             group=await db.scalar(default_user_query),
             is_active=False,
         )
-        db.add(db_user)
+        db.add(user_db)
         await db.commit()
-        await db.refresh(db_user)
+        await db.refresh(user_db)
 
-        activation_token = ActivationTokenModel(
-            user_id=db_user.id,
-        )
+        activation_token = ActivationTokenModel(user_id=cast(int, user_db.id))
 
         db.add(activation_token)
         await db.commit()
         await db.refresh(activation_token)
-        return db_user
+        return user_db
     except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred during user creation.",
+            detail="An error occurred during user creation.",
         )
 
 
@@ -77,7 +76,14 @@ async def activate_user(db: AsyncSession, payload: UserActivationRequestSchema):
     token_db = await db.scalar(
         select(ActivationTokenModel).where(ActivationTokenModel.token == payload.token)
     )
-    if token_db is None or token_db.expires_at < datetime.now():
+    if token_db is not None:
+        expires_at = cast(datetime, token_db.expires_at).replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired activation token.",
+            )
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token.",
@@ -115,7 +121,7 @@ async def request_reset_token(db: AsyncSession, payload: PasswordResetRequestSch
         )
     )
 
-    new_reset_token = PasswordResetTokenModel(user=user_db)
+    new_reset_token = PasswordResetTokenModel(user_id=cast(int, user_db.id))
     db.add(new_reset_token)
     await db.commit()
 
