@@ -1,8 +1,6 @@
 from datetime import datetime, timezone
-from email import message
 from typing import cast
 
-from database.models.accounts import TokenBaseModel
 from fastapi import APIRouter, Depends, status, HTTPException
 from schemas.accounts import (
     UserRegistrationRequestSchema,
@@ -19,7 +17,6 @@ from schemas.accounts import (
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -31,7 +28,7 @@ from database import (
     PasswordResetTokenModel,
     RefreshTokenModel,
 )
-from exceptions import BaseSecurityError, InvalidTokenError, TokenExpiredError
+from exceptions import InvalidTokenError, TokenExpiredError
 from security.interfaces import JWTAuthManagerInterface
 
 router = APIRouter()
@@ -81,7 +78,7 @@ async def register(
         await db.commit()
         await db.refresh(db_user)
 
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -214,7 +211,7 @@ async def password_reset_complete(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def login(
     user: UserLoginRequestSchema,
@@ -264,7 +261,7 @@ async def login(
 @router.post(
     "/refresh/",
     response_model=TokenRefreshResponseSchema,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def refresh_access_token(
     request: TokenRefreshRequestSchema,
