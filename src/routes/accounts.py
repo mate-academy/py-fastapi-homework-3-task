@@ -270,9 +270,15 @@ async def refresh_access_token(
 ):
     try:
         payload = jwt_manager.decode_refresh_token(request.refresh_token)
-    except (TokenExpiredError, InvalidTokenError):
+    except TokenExpiredError:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Token has expired."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired."
+        )
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Token has expired."
         )
 
     stmt = await db.execute(
