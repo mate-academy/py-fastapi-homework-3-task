@@ -1196,7 +1196,7 @@ Your task is to implement an endpoint in the `routes/accounts.py` file that allo
 #### Endpoint Details
 
 - **HTTP Method**: `POST`
-- **Path**: `/api/v1/accounts/refresh/`
+- **Path**: `/refresh/`
 
 ---
 
