@@ -419,7 +419,7 @@ async def refresh_access_token(
         db: AsyncSession = Depends(get_db),
         jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ):
-    # 1. ABSOLUTE PRE-CHECK: Intercept expired signatures before standard database lookups or exception handlers trigger
+    # 1.ABSOLUTE PRE-CHECK: Intercept expired signatures before standard database lookups or exception handlers trigger
     try:
         from jose import jwt
         unverified_payload = jwt.get_unverified_claims(refresh_data.refresh_token)

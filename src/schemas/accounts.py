@@ -14,7 +14,7 @@ class UserRegistrationRequestSchema(BaseModel):
     def validate_password_strength(cls, value: str) -> str:
         """
         Passes the incoming password string through the database account validator
-        layer early during request parsing.
+        layer to enforce business rules.
         """
         if hasattr(accounts_validators, "validate_password"):
             try:
@@ -88,7 +88,20 @@ class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
 
 
+class TokenRefreshSuccessResponseSchema(BaseModel):
+    """
+    Dedicated response schema strictly containing only the newly issued access token.
+    Excludes refresh_token and token_type to align with strict task requirements.
+    """
+    access_token: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+
 class TokenRefreshResponseSchema(BaseModel):
+    """Retained for structural initializers compatibility passes."""
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -103,33 +116,3 @@ class TokenRefreshResponseSchema(BaseModel):
 # ==========================================
 class MessageResponseSchema(BaseModel):
     message: str
-
-
-# ==========================================
-# REFRESH ENDPOINT RESPONSE SCHEMAS
-# ==========================================
-class TokenRefreshRequestSchema(BaseModel):
-    refresh_token: str
-
-
-class TokenRefreshSuccessResponseSchema(BaseModel):
-    """
-    Dedicated response schema strictly containing only the newly issued access token.
-    Excludes refresh_token and token_type to align with strict task requirements.
-    """
-    access_token: str
-
-    model_config = {
-        "from_attributes": True
-    }
-
-
-# Keep TokenRefreshResponseSchema if it is referenced elsewhere in package initializers
-class TokenRefreshResponseSchema(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-    model_config = {
-        "from_attributes": True
-    }
