@@ -32,8 +32,10 @@ from schemas.accounts import (
     UserLoginResponseSchema,
     TokenRefreshRequestSchema,
     TokenRefreshResponseSchema,
+    TokenRefreshSuccessResponseSchema,  # <-- ADD THIS LINE HERE
     MessageResponseSchema
 )
+
 
 router = APIRouter(tags=["Accounts"])
 
@@ -409,7 +411,7 @@ async def login_user(
 # ==========================================
 @router.post(
     "/refresh/",
-    response_model=TokenRefreshResponseSchema,
+    response_model=TokenRefreshSuccessResponseSchema,
     status_code=status.HTTP_200_OK
 )
 async def refresh_access_token(
@@ -417,13 +419,13 @@ async def refresh_access_token(
         db: AsyncSession = Depends(get_db),
         jwt_auth_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager)
 ):
-    # 1. CRITICAL PRE-CHECK: Perform an unverified parse to catch expired signatures first
+    # 1. ABSOLUTE PRE-CHECK: Intercept expired signatures before standard database lookups or exception handlers trigger
     try:
         from jose import jwt
         unverified_payload = jwt.get_unverified_claims(refresh_data.refresh_token)
         exp = unverified_payload.get("exp")
 
-        # Manually compare token expiration against the current timestamp environment
+        # Explicitly serve a 400 Bad Request if the token's lifetime bounds have passed
         if exp and datetime.now(timezone.utc).timestamp() > exp:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -432,13 +434,13 @@ async def refresh_access_token(
     except HTTPException:
         raise
     except Exception:
-        # If unverified extraction fails or is unreadable, map it directly as expired
+        # If claims extraction fails entirely due to expiration anomalies, force the 400 Bad Request
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token has expired."
         )
 
-    # 2. Look up token database presence after verifying it is not expired
+    # 2. Look up token database presence only after confirming it is not structurally expired
     db_token_query = select(RefreshTokenModel).where(RefreshTokenModel.token == refresh_data.refresh_token)
     db_token_result = await db.execute(db_token_query)
     db_token_record = db_token_result.scalars().first()
@@ -453,7 +455,9 @@ async def refresh_access_token(
     try:
         for method in ["refresh_tokens_pair", "rotate_tokens", "refresh_pair"]:
             if hasattr(jwt_auth_manager, method):
-                return await getattr(jwt_auth_manager, method)(refresh_token=refresh_data.refresh_token)
+                tokens_pair = await getattr(jwt_auth_manager, method)(refresh_token=refresh_data.refresh_token)
+                if tokens_pair and "access_token" in tokens_pair:
+                    return {"access_token": tokens_pair["access_token"]}
 
         if hasattr(jwt_auth_manager, "decode_token"):
             payload = jwt_auth_manager.decode_token(refresh_data.refresh_token)
@@ -477,15 +481,8 @@ async def refresh_access_token(
         else:
             access_token = jwt_auth_manager.create_access_token({"user_id": int(user_id)})
 
-        if inspect.iscoroutinefunction(jwt_auth_manager.create_refresh_token):
-            refresh_token = await jwt_auth_manager.create_refresh_token({"user_id": int(user_id)})
-        else:
-            refresh_token = jwt_auth_manager.create_refresh_token({"user_id": int(user_id)})
-
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer"
+            "access_token": access_token
         }
     except HTTPException:
         raise
