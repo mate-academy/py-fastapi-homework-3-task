@@ -152,7 +152,6 @@ async def activate_account(
     user.is_active = True
 
     await db.delete(activation_token)
-
     await db.commit()
 
     return MessageResponseSchema(
