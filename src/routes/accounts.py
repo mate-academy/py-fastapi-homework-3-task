@@ -337,7 +337,7 @@ def invalid_db_operations_error() -> HTTPException:
 
 @router.post(
     "/login/",
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     response_model=UserLoginResponseSchema,
 )
 async def login(
