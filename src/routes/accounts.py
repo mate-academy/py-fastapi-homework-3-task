@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import cast
+from typing import NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -131,7 +131,7 @@ async def register(
         )
 
 
-def raise_invalid_activation_token() -> HTTPException:
+def raise_invalid_activation_token() -> NoReturn:
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid or expired activation token.",
@@ -237,8 +237,8 @@ async def request_password_reset(
         )
 
 
-def invalid_email_or_token_error() -> HTTPException:
-    return HTTPException(
+def invalid_email_or_token_error() -> NoReturn:
+    raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Invalid email or token.",
     )
@@ -260,7 +260,7 @@ async def complete_reset_password(
         )
 
         if user is None or not user.is_active:
-            raise invalid_email_or_token_error()
+            invalid_email_or_token_error()
 
         token_record = await get_password_reset_token_by_user_id(
             db=db,
@@ -268,7 +268,7 @@ async def complete_reset_password(
         )
 
         if token_record is None:
-            raise invalid_email_or_token_error()
+            invalid_email_or_token_error()
 
         expires_at = cast(
             datetime,
@@ -287,7 +287,7 @@ async def complete_reset_password(
             )
             await db.commit()
 
-            raise invalid_email_or_token_error()
+            invalid_email_or_token_error()
 
         user.password = reset_data.password
 
@@ -328,8 +328,8 @@ async def complete_reset_password(
     )
 
 
-def invalid_db_operations_error() -> HTTPException:
-    return HTTPException(
+def invalid_db_operations_error() -> NoReturn:
+    raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail="An error occurred while processing the request.",
     )
@@ -337,7 +337,7 @@ def invalid_db_operations_error() -> HTTPException:
 
 @router.post(
     "/login/",
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     response_model=UserLoginResponseSchema,
 )
 async def login(
@@ -398,11 +398,11 @@ async def login(
 
     except SQLAlchemyError:
         await db.rollback()
-        raise invalid_db_operations_error()
+        invalid_db_operations_error()
 
     except Exception:
         await db.rollback()
-        raise invalid_db_operations_error()
+        invalid_db_operations_error()
 
 
 @router.post(
