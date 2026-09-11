@@ -30,6 +30,7 @@ class UserRead(UserBase):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 
@@ -39,3 +40,14 @@ class AccountActivation(UserBase):
 
 class ResetPassword(UserCreate):
     token: str
+
+
+class UserLogin(UserBase):
+    password: str
+
+class RefreshToken(BaseModel):
+    refresh_token: str
+
+
+class AccessToken(BaseModel):
+    access_token: str

@@ -1,9 +1,10 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from http import HTTPStatus
 from http.client import HTTPResponse
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
+from jose import jwt
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,11 +25,12 @@ from exceptions import BaseSecurityError
 from security import passwords
 from security.interfaces import JWTAuthManagerInterface
 
-from schemas.accounts import UserCreate, UserRead, AccountActivation, UserBase, ResetPassword
+from schemas.accounts import UserCreate, UserRead, AccountActivation, UserBase, ResetPassword, Token, UserLogin, \
+    RefreshToken, AccessToken
+from security.passwords import verify_password
 from security.token_manager import JWTAuthManager
 
 router = APIRouter()
-
 
 @router.post("/register/", response_model=UserRead, status_code=status.HTTP_201_CREATED,)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -243,3 +245,133 @@ async def reset_password_complete(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while resetting the password.",
         )
+
+
+@router.post(
+    "/login/",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+)
+async def login(
+    user_data: UserLogin,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(
+        get_jwt_auth_manager
+    ),
+    settings: BaseAppSettings = Depends(get_settings),
+):
+    user = await db.scalar(
+        select(UserModel).where(
+            UserModel.email == user_data.email
+        )
+    )
+
+    if user is None or not user.verify_password(
+        user_data.password
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is not activated.",
+        )
+
+    access_token = jwt_manager.create_access_token(
+        {"user_id": user.id}
+    )
+    refresh_token = jwt_manager.create_refresh_token(
+        {"user_id": user.id}
+    )
+
+    refresh_token_record = RefreshTokenModel.create(
+        user_id=user.id,
+        days_valid=settings.LOGIN_TIME_DAYS,
+        token=refresh_token,
+    )
+
+    try:
+        db.add(refresh_token_record)
+        await db.commit()
+
+    except SQLAlchemyError as error:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing the request.",
+        ) from error
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post(
+    "/refresh/",
+    response_model=AccessToken,
+    status_code=status.HTTP_200_OK,
+)
+async def refresh_access_token(
+    token_data: RefreshToken,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(
+        get_jwt_auth_manager
+    ),
+):
+    # Сначала проверяем подпись и срок действия JWT
+    try:
+        payload = jwt_manager.decode_refresh_token(
+            token_data.refresh_token
+        )
+    except BaseSecurityError as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+
+    user_id = payload.get("user_id")
+
+    stored_token = await db.scalar(
+        select(RefreshTokenModel).where(
+            RefreshTokenModel.token == token_data.refresh_token
+        )
+    )
+
+    if stored_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
+
+    # JWT должен принадлежать тому же пользователю,
+    # что и запись в базе
+    if stored_token.user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token not found.",
+        )
+
+    user = await db.scalar(
+        select(UserModel).where(
+            UserModel.id == user_id
+        )
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    access_token = jwt_manager.create_access_token(
+        {"user_id": user.id}
+    )
+
+    return {
+        "access_token": access_token
+    }
