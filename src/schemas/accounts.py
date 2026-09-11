@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from pydantic import BaseModel, field_validator
 
-from database import accounts_validators
+from database.validators import accounts as accounts_validators
 
 
 class UserBase(BaseModel):
