@@ -7,12 +7,13 @@ from database import accounts_validators
 class UserBase(BaseModel):
     email: str
 
-    @field_validator('email')
+    @field_validator("email")
     @classmethod
     def validate_email(cls, v):
         if v:
             return accounts_validators.validate_email(v)
         raise HTTPException(status_code=400, detail="No email")
+
 
 class UserCreate(UserBase):
     password: str
@@ -23,6 +24,7 @@ class UserCreate(UserBase):
         if value:
             return accounts_validators.validate_password_strength(value)
         raise HTTPException(status_code=400, detail="No credentials")
+
 
 class UserRead(UserBase):
     id: int
@@ -44,6 +46,7 @@ class ResetPassword(UserCreate):
 
 class UserLogin(UserBase):
     password: str
+
 
 class RefreshToken(BaseModel):
     refresh_token: str

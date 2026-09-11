@@ -1,15 +1,11 @@
-from datetime import datetime, timezone, timedelta
-from http import HTTPStatus
-from http.client import HTTPResponse
-from typing import cast
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, status, HTTPException
-from jose import jwt
+
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.sql import crud
+
 
 from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
@@ -19,28 +15,41 @@ from database import (
     UserGroupEnum,
     ActivationTokenModel,
     PasswordResetTokenModel,
-    RefreshTokenModel
+    RefreshTokenModel,
 )
 from exceptions import BaseSecurityError
-from security import passwords
+
 from security.interfaces import JWTAuthManagerInterface
 
-from schemas.accounts import UserCreate, UserRead, AccountActivation, UserBase, ResetPassword, Token, UserLogin, \
-    RefreshToken, AccessToken
-from security.passwords import verify_password
-from security.token_manager import JWTAuthManager
+from schemas.accounts import (
+    UserCreate,
+    UserRead,
+    AccountActivation,
+    UserBase,
+    ResetPassword,
+    Token,
+    UserLogin,
+    RefreshToken,
+    AccessToken,
+)
 
 router = APIRouter()
 
-@router.post("/register/", response_model=UserRead, status_code=status.HTTP_201_CREATED,)
+
+@router.post(
+    "/register/",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     if await db.scalar(select(UserModel).where(UserModel.email == user.email)):
-        raise HTTPException(status_code=409, detail=f"A user with this email {user.email} already exists.")
+        raise HTTPException(
+            status_code=409,
+            detail=f"A user with this email {user.email} already exists.",
+        )
 
     user_group = await db.scalar(
-        select(UserGroupModel).where(
-            UserGroupModel.name == UserGroupEnum.USER
-        )
+        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
     )
 
     if user_group is None:
@@ -67,7 +76,9 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
     except SQLAlchemyError:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="An error occurred during user creation.")
+        raise HTTPException(
+            status_code=500, detail="An error occurred during user creation."
+        )
 
 
 @router.post("/activate/", status_code=status.HTTP_200_OK)
@@ -75,11 +86,7 @@ async def activate_user(
     account: AccountActivation,
     db: AsyncSession = Depends(get_db),
 ):
-    user = await db.scalar(
-        select(UserModel).where(
-            UserModel.email == account.email
-        )
-    )
+    user = await db.scalar(select(UserModel).where(UserModel.email == account.email))
 
     if user is None:
         raise HTTPException(
@@ -129,9 +136,7 @@ async def activate_user(
             detail="An error occurred during account activation.",
         ) from error
 
-    return {
-        "message": "User account activated successfully."
-    }
+    return {"message": "User account activated successfully."}
 
 
 @router.post(
@@ -144,16 +149,13 @@ async def request_password_reset(
 ):
     response = {
         "message": (
-            "If you are registered, you will receive "
-            "an email with instructions."
+            "If you are registered, you will receive " "an email with instructions."
         )
     }
 
     try:
         user = await db.scalar(
-            select(UserModel).where(
-                UserModel.email == user_data.email
-            )
+            select(UserModel).where(UserModel.email == user_data.email)
         )
 
         if user is None or not user.is_active:
@@ -165,9 +167,7 @@ async def request_password_reset(
             )
         )
 
-        new_token = PasswordResetTokenModel(
-            user_id=user.id
-        )
+        new_token = PasswordResetTokenModel(user_id=user.id)
         db.add(new_token)
 
         await db.commit()
@@ -180,20 +180,16 @@ async def request_password_reset(
         ) from error
 
     return response
+
+
 @router.post("/reset-password/complete/", status_code=status.HTTP_200_OK)
 async def reset_password_complete(
-        reset_pass: ResetPassword,
-        db: AsyncSession = Depends(get_db)
+    reset_pass: ResetPassword, db: AsyncSession = Depends(get_db)
 ):
-    user = await db.scalar(
-        select(UserModel).where(
-            UserModel.email == reset_pass.email
-        )
-    )
+    user = await db.scalar(select(UserModel).where(UserModel.email == reset_pass.email))
     if user is None or not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid email or token."
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid email or token."
         )
     token = await db.scalar(
         select(PasswordResetTokenModel).where(
@@ -235,9 +231,7 @@ async def reset_password_complete(
             await db.delete(token)
             await db.commit()
             await db.refresh(user)
-            return {
-                "message": "Password reset successfully."
-            }
+            return {"message": "Password reset successfully."}
 
     except SQLAlchemyError:
         await db.rollback()
@@ -255,20 +249,12 @@ async def reset_password_complete(
 async def login(
     user_data: UserLogin,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(
-        get_jwt_auth_manager
-    ),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
     settings: BaseAppSettings = Depends(get_settings),
 ):
-    user = await db.scalar(
-        select(UserModel).where(
-            UserModel.email == user_data.email
-        )
-    )
+    user = await db.scalar(select(UserModel).where(UserModel.email == user_data.email))
 
-    if user is None or not user.verify_password(
-        user_data.password
-    ):
+    if user is None or not user.verify_password(user_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
@@ -280,12 +266,8 @@ async def login(
             detail="User account is not activated.",
         )
 
-    access_token = jwt_manager.create_access_token(
-        {"user_id": user.id}
-    )
-    refresh_token = jwt_manager.create_refresh_token(
-        {"user_id": user.id}
-    )
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
+    refresh_token = jwt_manager.create_refresh_token({"user_id": user.id})
 
     refresh_token_record = RefreshTokenModel.create(
         user_id=user.id,
@@ -319,15 +301,11 @@ async def login(
 async def refresh_access_token(
     token_data: RefreshToken,
     db: AsyncSession = Depends(get_db),
-    jwt_manager: JWTAuthManagerInterface = Depends(
-        get_jwt_auth_manager
-    ),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
 ):
     # Сначала проверяем подпись и срок действия JWT
     try:
-        payload = jwt_manager.decode_refresh_token(
-            token_data.refresh_token
-        )
+        payload = jwt_manager.decode_refresh_token(token_data.refresh_token)
     except BaseSecurityError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -356,11 +334,7 @@ async def refresh_access_token(
             detail="Refresh token not found.",
         )
 
-    user = await db.scalar(
-        select(UserModel).where(
-            UserModel.id == user_id
-        )
-    )
+    user = await db.scalar(select(UserModel).where(UserModel.id == user_id))
 
     if user is None:
         raise HTTPException(
@@ -368,10 +342,6 @@ async def refresh_access_token(
             detail="User not found.",
         )
 
-    access_token = jwt_manager.create_access_token(
-        {"user_id": user.id}
-    )
+    access_token = jwt_manager.create_access_token({"user_id": user.id})
 
-    return {
-        "access_token": access_token
-    }
+    return {"access_token": access_token}
