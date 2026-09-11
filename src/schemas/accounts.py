@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from pydantic import BaseModel, EmailStr, field_validator, Field
+from pydantic import BaseModel, field_validator
 
 from database import accounts_validators
 
