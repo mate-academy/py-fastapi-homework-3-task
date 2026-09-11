@@ -35,3 +35,7 @@ class Token(BaseModel):
 
 class AccountActivation(UserBase):
     token: str
+
+
+class ResetPassword(UserCreate):
+    token: str
