@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +38,10 @@ except ImportError:
     except ImportError:
         class TokenExpiredError(Exception):
             pass
+
+
+class RefreshTokenResponseSchema(BaseModel):
+    access_token: str
 
 
 router = APIRouter()
@@ -332,7 +337,7 @@ async def login(
 
 @router.post(
     "/refresh/",
-    response_model=TokenResponseSchema,
+    response_model=RefreshTokenResponseSchema,
     status_code=status.HTTP_200_OK,
 )
 async def refresh_tokens(
@@ -415,18 +420,14 @@ async def refresh_tokens(
 
     days_valid = _get_refresh_token_days(settings)
     new_db_refresh_token = RefreshTokenModel.create(
-        user_id=user_id,
+        user_id=cast(int, user_id),
         days_valid=days_valid,
         token=new_refresh_token,
     )
     db.add(new_db_refresh_token)
     await db.commit()
 
-    return TokenResponseSchema(
-        access_token=new_access_token,
-        refresh_token=new_refresh_token,
-        token_type="bearer",
-    )
+    return RefreshTokenResponseSchema(access_token=new_access_token)
 
 
 @router.get(
