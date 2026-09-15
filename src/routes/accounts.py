@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -36,6 +37,7 @@ except ImportError:
     except ImportError:
         class TokenExpiredError(Exception):
             pass
+
 
 router = APIRouter()
 
@@ -87,7 +89,7 @@ async def register_user(
         db.add(new_user)
         await db.flush()
 
-        activation_token = ActivationTokenModel(user_id=new_user.id)
+        activation_token = ActivationTokenModel(user_id=cast(int, new_user.id))
         db.add(activation_token)
 
         await db.commit()
@@ -196,7 +198,7 @@ async def request_password_reset(
         await db.delete(existing_token)
         await db.flush()
 
-    new_token = PasswordResetTokenModel(user_id=user.id)
+    new_token = PasswordResetTokenModel(user_id=cast(int, user.id))
     db.add(new_token)
     await db.commit()
 
@@ -305,7 +307,7 @@ async def login(
 
         days_valid = _get_refresh_token_days(settings)
         db_refresh_token = RefreshTokenModel.create(
-            user_id=user.id,
+            user_id=cast(int, user.id),
             days_valid=days_valid,
             token=refresh_token,
         )
