@@ -11,7 +11,7 @@ class JWTAuthManager(JWTAuthManagerInterface):
     """
     A manager for creating, decoding, and verifying JWT access and refresh tokens.
     """
-
+    _PASSWORD_RESET_TIMEDELTA_MINUTES = 60
     _ACCESS_KEY_TIMEDELTA_MINUTES = 10
     _REFRESH_KEY_TIMEDELTA_MINUTES = 60 * 24 * 7
 
@@ -69,8 +69,7 @@ class JWTAuthManager(JWTAuthManagerInterface):
             return jwt.decode(token, self._secret_key_refresh, algorithms=[self._algorithm])
         except ExpiredSignatureError:
             raise TokenExpiredError
-        except JWTError as error:
-            print(error)
+        except JWTError:
             raise InvalidTokenError
 
     def verify_refresh_token_or_raise(self, token: str) -> None:
@@ -84,3 +83,47 @@ class JWTAuthManager(JWTAuthManagerInterface):
         Verify an access token and raise an error if it's invalid or expired.
         """
         self.decode_access_token(token)
+
+    def create_password_reset_token(self, data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """
+        Create a new password reset token with a default or specified expiration time.
+        """
+        return self._create_token(
+            data,
+            self._secret_key_access,
+            expires_delta or timedelta(minutes=self._PASSWORD_RESET_TIMEDELTA_MINUTES)
+        )
+
+    def decode_password_reset_token(self, token: str) -> dict:
+        """
+        Decodes and validates a password reset JWT token.
+        """
+        try:
+            return jwt.decode(
+                token,
+                self._secret_key_access,
+                algorithms=[self._algorithm]
+            )
+        except ExpiredSignatureError:
+            raise TokenExpiredError
+        except JWTError:
+            raise InvalidTokenError
+
+    def verify_password_reset_token_or_raise(self, token: str) -> None:
+        """
+        Verify a password reset token and raise an error if it's invalid or expired.
+        """
+        self.decode_password_reset_token(token)
+
+    def get_token_expiration(self, token: str) -> datetime:
+        """
+        Extract and return the expiration datetime from a JWT token.
+        """
+        try:
+            payload = jwt.get_unverified_claims(token)
+            exp_timestamp = payload.get("exp")
+            if not exp_timestamp:
+                raise InvalidTokenError
+            return datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+        except JWTError:
+            raise InvalidTokenError
