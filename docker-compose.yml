@@ -1,7 +1,7 @@
 services:
   db:
-    image: 'postgres:latest'
-    container_name: postgres_theater
+    image: 'postgres:16'
+    container_name: postgres_theater_3
     env_file:
       - .env
     ports:
@@ -12,7 +12,7 @@ services:
     networks:
       - theater_network
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB -h 127.0.0.1 || exit 1" ]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1 || exit 1" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -20,7 +20,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin_theater
+    container_name: pgadmin_theater_3
     ports:
       - "3333:80"
     env_file:
@@ -36,13 +36,13 @@ services:
   web:
     restart: always
     build: .
-    container_name: backend_theater
+    container_name: backend_theater_3
     command: [ "/bin/bash", "/commands/run_web_server_dev.sh" ]
     env_file:
       - .env
     environment:
       - LOG_LEVEL=debug
-      - PYTHONPATH=/usr/src/fastapi
+      - PYTHONPATH=/usr/src/app
       - WATCHFILES_FORCE_POLLING=true
     ports:
       - "8000:8000"
@@ -50,23 +50,26 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./src:/usr/src/fastapi
+      - ./src:/usr/src/app/src
     networks:
       - theater_network
 
   migrator:
     build: .
-    container_name: alembic_migrator_theater
+    container_name: alembic_migrator_theater_3
     command: ["/bin/bash", "/commands/run_migration.sh"]
     depends_on:
       db:
         condition: service_healthy
     volumes:
-      - ./src:/usr/src/fastapi
+      - ./src:/usr/src/app/src
+      - ./alembic:/usr/src/app/alembic
+      - ./alembic.ini:/usr/src/app/alembic.ini
     env_file:
       - .env
     environment:
-      - PYTHONPATH=/usr/src/fastapi
+      - PYTHONPATH=/usr/src/app
+      - ALEMBIC_CONFIG=/usr/src/app/alembic.ini
     networks:
       - theater_network
 
