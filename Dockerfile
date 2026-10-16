@@ -1,12 +1,9 @@
 FROM python:3.10
 
-# Setting environment variables for Python
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PIP_NO_CACHE_DIR=off
-ENV ALEMBIC_CONFIG=/usr/src/alembic/alembic.ini
 
-# Installing dependencies
 RUN apt update && apt install -y \
     gcc \
     libpq-dev \
@@ -15,36 +12,21 @@ RUN apt update && apt install -y \
     dos2unix \
     && apt clean
 
-# Install Poetry
 RUN python -m pip install --upgrade pip && \
     pip install poetry
 
-# Copy dependency files
-COPY ./poetry.lock /usr/src/poetry/poetry.lock
-COPY ./pyproject.toml /usr/src/poetry/pyproject.toml
-COPY ./alembic.ini /usr/src/alembic/alembic.ini
+WORKDIR /usr/src/app
 
-# Configure Poetry to avoid creating a virtual environment
-RUN poetry config virtualenvs.create false
+COPY pyproject.toml poetry.lock* alembic.ini ./
 
-# Selecting a working directory
-WORKDIR /usr/src/poetry
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-root --only main
 
-# Install dependencies with Poetry
-RUN poetry lock
-RUN poetry install --no-root --only main
-
-# Selecting a working directory
-WORKDIR /usr/src/fastapi
-
-# Copy the source code
-COPY ./src .
-
-# Copy commands
+COPY ./src ./src
+COPY ./alembic ./alembic
 COPY ./commands /commands
 
-# Ensure Unix-style line endings for scripts
-RUN dos2unix /commands/*.sh
+RUN dos2unix /commands/*.sh && \
+    chmod +x /commands/*.sh
 
-# Add execute bit to commands files
-RUN chmod +x /commands/*.sh
+ENV PYTHONPATH=/usr/src/app
