@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -130,9 +130,9 @@ async def activate_user(
     expires_at = activation_token.expires_at
 
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    if expires_at <= datetime.now(UTC):
+    if expires_at <= datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid or expired activation token.",
@@ -250,9 +250,9 @@ async def reset_password(
     expires_at = reset_token.expires_at
 
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
 
-    if expires_at <= datetime.now(UTC):
+    if expires_at <= datetime.now(timezone.utc):
         try:
             await db.delete(reset_token)
             await db.commit()
