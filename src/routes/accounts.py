@@ -288,7 +288,7 @@ async def reset_password(
 async def login_user(
     user_data: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),# noqa: B008
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),  # noqa: B008
     settings: BaseAppSettings = Depends(get_settings),  # noqa: B008
 ):
     stmt = select(UserModel).where(
