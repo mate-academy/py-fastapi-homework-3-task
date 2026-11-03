@@ -29,7 +29,7 @@ class Token(BaseModel):
 
 
 class UserActivationRequestSchema(UserBase):
-    token: str = Field(max_lenght=64)
+    token: str = Field(max_length=64)
 
 
 class MessageResponseSchema(BaseModel):
@@ -42,7 +42,7 @@ class PasswordResetRequestSchema(UserBase):
 
 class PasswordResetCompleteRequestSchema(UserBase):
     password: str
-    token: str = Field(max_lenght=64)
+    token: str = Field(max_length=64)
 
     @field_validator("password")
     def password_validator(cls, value: str):
