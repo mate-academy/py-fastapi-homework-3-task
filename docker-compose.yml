@@ -1,6 +1,6 @@
 services:
   db:
-    image: 'postgres:latest'
+    image: 'postgres:16-alpine'
     container_name: postgres_theater
     env_file:
       - .env
@@ -62,7 +62,7 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./src:/usr/src/fastapi
+        - ./:/usr/src/fastapi
     env_file:
       - .env
     environment:
