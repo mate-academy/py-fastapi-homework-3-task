@@ -9,8 +9,7 @@ class UserBaseSchema(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        accounts_validators.validate_email(value)
-        return value
+        return accounts_validators.validate_email(value.lower())
 
 
 class UserRegistrationRequestSchema(UserBaseSchema):
@@ -50,13 +49,13 @@ class UserLoginResponseSchema(BaseModel):
     token_type: str
 
 
-class UserLoginRequestSchema(UserRegistrationRequestSchema):
-    pass
+class UserLoginRequestSchema(UserBaseSchema):
+    password: str
 
 
 class TokenRefreshRequestSchema(BaseModel):
-    pass
+    refresh_token: str
 
 
 class TokenRefreshResponseSchema(BaseModel):
-    pass
+    access_token: str
