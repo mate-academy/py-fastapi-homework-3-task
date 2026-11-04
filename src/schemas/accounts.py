@@ -1,9 +1,9 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
 from database import accounts_validators
 
 
-class UserBase(BaseModel):
+class UserBaseSchema(BaseModel):
     email: EmailStr
 
     @field_validator("email")
@@ -13,7 +13,7 @@ class UserBase(BaseModel):
         return value
 
 
-class UserCreate(UserBase):
+class UserRegistrationRequestSchema(UserBaseSchema):
     password: str
 
     @field_validator("password")
@@ -22,12 +22,46 @@ class UserCreate(UserBase):
         accounts_validators.validate_password_strength(value)
         return value
 
-class UserRead(UserBase):
+class UserRegistrationResponseSchema(UserBaseSchema):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+
+class UserActivationRequestSchema(BaseModel):
+    email: EmailStr
+    token: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        accounts_validators.validate_email(value)
+        return value
+
+
+class MessageResponseSchema(BaseModel):
+    message: str
+
+
+class PasswordResetRequestSchema(BaseModel):
+    pass
+
+
+class PasswordResetCompleteRequestSchema(BaseModel):
+    pass
+
+
+class UserLoginResponseSchema(BaseModel):
+    pass
+
+
+class UserLoginRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshRequestSchema(BaseModel):
+    pass
+
+
+class TokenRefreshResponseSchema(BaseModel):
+    pass
