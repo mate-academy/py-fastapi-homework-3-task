@@ -21,6 +21,7 @@ class UserRegistrationRequestSchema(UserBaseSchema):
         accounts_validators.validate_password_strength(value)
         return value
 
+
 class UserRegistrationResponseSchema(UserBaseSchema):
     id: int
 

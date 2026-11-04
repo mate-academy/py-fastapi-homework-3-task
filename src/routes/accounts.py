@@ -29,6 +29,7 @@ from security.passwords import hash_password
 
 router = APIRouter()
 
+
 @router.post(
     "/register/",
     response_model=UserRegistrationResponseSchema,
@@ -84,6 +85,7 @@ async def create_user(
             status_code=500,
             detail="An error occurred during user creation."
         ) from exc
+
 
 @router.post(
     "/activate/",
@@ -145,6 +147,7 @@ async def activate_user(
             detail="An error occurred during account activation."
         ) from exc
 
+
 @router.post(
     "/password-reset/request/",
     response_model=MessageResponseSchema,
@@ -180,8 +183,8 @@ async def request_password_reset_token(
     db.add(new_user_token)
     await db.commit()
     return MessageResponseSchema(
-            message="If you are registered, you will receive an email with instructions.",
-        )
+        message="If you are registered, you will receive an email with instructions.",
+    )
 
 
 @router.post(
@@ -265,6 +268,7 @@ async def complete_password_reset(
             status_code=500,
             detail="An error occurred while resetting the password."
         ) from exc
+
 
 @router.post(
     "/login/",
