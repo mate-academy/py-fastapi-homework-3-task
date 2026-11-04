@@ -21,7 +21,7 @@ from exceptions import BaseSecurityError
 from schemas import (
     UserRegistrationResponseSchema,
     UserRegistrationRequestSchema,
-    MessageResponseSchema, UserActivationRequestSchema
+    MessageResponseSchema, UserActivationRequestSchema, PasswordResetRequestSchema
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password
@@ -143,3 +143,41 @@ async def activate_user(
             status_code=500,
             detail="An error occurred during account activation."
         ) from exc
+
+@router.post(
+    "/password-reset/request/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+async def request_password_reset_token(
+        user_data: PasswordResetRequestSchema,
+        db: AsyncSession = Depends(get_db)
+):
+    current_user = await db.scalar(
+        select(UserModel).where(UserModel.email == user_data.email)
+    )
+
+    if not current_user or not current_user.is_active:
+        return MessageResponseSchema(
+            message="If you are registered, you will receive an email with instructions.",
+        )
+
+    user_token = await db.scalar(
+        select(PasswordResetTokenModel).where(
+            PasswordResetTokenModel.user_id == current_user.id
+        )
+    )
+
+    if user_token is not None:
+        await db.delete(user_token)
+        await db.flush()
+
+    new_user_token = PasswordResetTokenModel(
+        user_id=current_user.id
+    )
+
+    db.add(new_user_token)
+    await db.commit()
+    return MessageResponseSchema(
+            message="If you are registered, you will receive an email with instructions.",
+        )

@@ -28,22 +28,15 @@ class UserRegistrationResponseSchema(UserBaseSchema):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserActivationRequestSchema(BaseModel):
-    email: EmailStr
+class UserActivationRequestSchema(UserBaseSchema):
     token: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        accounts_validators.validate_email(value)
-        return value
 
 
 class MessageResponseSchema(BaseModel):
     message: str
 
 
-class PasswordResetRequestSchema(BaseModel):
+class PasswordResetRequestSchema(UserBaseSchema):
     pass
 
 
