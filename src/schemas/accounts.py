@@ -40,15 +40,17 @@ class PasswordResetRequestSchema(UserBaseSchema):
     pass
 
 
-class PasswordResetCompleteRequestSchema(BaseModel):
-    pass
+class PasswordResetCompleteRequestSchema(UserRegistrationRequestSchema):
+    token: str
 
 
 class UserLoginResponseSchema(BaseModel):
-    pass
+    access_token: str
+    refresh_token: str
+    token_type: str
 
 
-class UserLoginRequestSchema(BaseModel):
+class UserLoginRequestSchema(UserRegistrationRequestSchema):
     pass
 
 

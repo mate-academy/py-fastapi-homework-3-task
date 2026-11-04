@@ -21,7 +21,8 @@ from exceptions import BaseSecurityError
 from schemas import (
     UserRegistrationResponseSchema,
     UserRegistrationRequestSchema,
-    MessageResponseSchema, UserActivationRequestSchema, PasswordResetRequestSchema
+    MessageResponseSchema, UserActivationRequestSchema, PasswordResetRequestSchema, PasswordResetCompleteRequestSchema,
+    UserLoginResponseSchema, UserLoginRequestSchema
 )
 from security.interfaces import JWTAuthManagerInterface
 from security.passwords import hash_password
@@ -181,3 +182,114 @@ async def request_password_reset_token(
     return MessageResponseSchema(
             message="If you are registered, you will receive an email with instructions.",
         )
+
+
+@router.post(
+    "/reset-password/complete/",
+    response_model=MessageResponseSchema,
+    status_code=status.HTTP_200_OK,
+)
+async def complete_password_reset(
+        user_data: PasswordResetCompleteRequestSchema,
+        db: AsyncSession = Depends(get_db)
+):
+    try:
+        current_user = await db.scalar(
+            select(UserModel).where(UserModel.email == user_data.email)
+        )
+
+        if current_user is None or not current_user.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or token."
+            )
+
+        user_token = await db.scalar(
+            select(PasswordResetTokenModel).where(
+                PasswordResetTokenModel.user_id == current_user.id,
+            )
+        )
+
+        if user_token is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or token."
+            )
+
+        if user_token.token != user_data.token:
+            await db.delete(user_token)
+            await db.commit()
+
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or token."
+            )
+
+        expires_at = user_token.expires_at.replace(tzinfo=timezone.utc)
+
+        if expires_at <= datetime.now(timezone.utc):
+            await db.delete(user_token)
+            await db.commit()
+
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or token."
+            )
+
+        current_user.password = user_data.password
+        await db.delete(user_token)
+        await db.commit()
+        return MessageResponseSchema(message="Password reset successfully.")
+
+    except HTTPException:
+        raise
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while resetting the password."
+        ) from exc
+
+@router.post("/login/", response_model=UserLoginResponseSchema)
+async def login_user(
+    user_data: UserLoginRequestSchema,
+    db: AsyncSession = Depends(get_db),
+    jwt_manager: JWTAuthManagerInterface = Depends(get_jwt_auth_manager),
+    settings: BaseAppSettings = Depends(get_settings),
+):
+
+    current_user = await db.scalar(
+        select(UserModel).where(UserModel.email == user_data.email)
+    )
+
+    if current_user is None or not current_user.verify_password(user_data.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password."
+        )
+
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="User account is not activated."
+        )
+    user_refresh_token = RefreshTokenModel.create(
+        token=jwt_manager.create_refresh_token(
+            data={"sub": str(current_user.id)}
+        ),
+        user_id=current_user.id,
+        days_valid=settings.REFRESH_TOKEN_EXPIRE_DAYS,
+    )
+    user_access_token = jwt_manager.create_access_token(
+        data={"sub": str(current_user.id)}
+    )
+    try:
+        db.add(user_refresh_token)
+        await db.commit()
+
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred while processing the request."
+        ) from exc
