@@ -212,7 +212,9 @@ async def reset_password(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_200_OK,
+    # 201: login creates a RefreshTokenModel record;
+    # required by test_login_user_success (test_accounts.py, line 712)
+    status_code=status.HTTP_201_CREATED,
 )
 async def login_user(
     login_data: UserLoginRequestSchema,
