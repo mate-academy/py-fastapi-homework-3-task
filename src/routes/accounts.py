@@ -218,7 +218,7 @@ async def reset_password(
 @router.post(
     "/login/",
     response_model=UserLoginResponseSchema,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     summary="User login",
     description="Authenticate the user and return access and refresh tokens.",
     responses={
@@ -272,7 +272,7 @@ async def login_user(
 
 
 @router.post(
-    "/refresh/",
+    "/api/v1/accounts/refresh/",
     response_model=TokenRefreshResponseSchema,
     summary="Refresh access token",
     description="Return a new access token for a valid refresh token.",
