@@ -64,9 +64,9 @@ MoviesLanguagesModel = Table(
     Base.metadata,
     Column(
         "movie_id",
-           ForeignKey("movies.id", ondelete="CASCADE"),
-           primary_key=True
-           ),
+        ForeignKey("movies.id", ondelete="CASCADE"),
+        primary_key=True
+    ),
     Column(
         "language_id",
         ForeignKey("languages.id", ondelete="CASCADE"),
