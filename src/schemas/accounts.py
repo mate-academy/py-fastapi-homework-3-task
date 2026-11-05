@@ -1,4 +1,5 @@
-from typing import Any, Self
+from typing import Any
+from typing_extensions import Self
 
 from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 
