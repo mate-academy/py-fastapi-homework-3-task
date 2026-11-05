@@ -62,7 +62,9 @@ async def register_user(
         await db.flush()
 
         expires_at = datetime.now(timezone.utc) + timedelta(days=1)
-        token_val = password_manager.generate_token() if hasattr(password_manager, "generate_token") else "some-secure-token"
+        token_val = password_manager.generate_token() \
+            if hasattr(password_manager, "generate_token") \
+            else "some-secure-token"
 
         activation_token = ActivationTokenModel(
             token=token_val,
@@ -152,7 +154,9 @@ async def request_password_reset(
         await db.execute(delete(PasswordResetTokenModel).where(PasswordResetTokenModel.user_id == user.id))
 
         expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-        token_val = password_manager.generate_token() if hasattr(password_manager, "generate_token") else "reset-secure-token"
+        token_val = password_manager.generate_token() \
+            if hasattr(password_manager, "generate_token") \
+            else "reset-secure-token"
 
         reset_token = PasswordResetTokenModel(
             token=token_val,
