@@ -477,7 +477,8 @@ async def login_user(
 
         return LoginResponseSchema(
             access_token=access_token,
-            refresh_token=refresh_token
+            refresh_token=refresh_token,
+            token_type="bearer"
         )
 
     except SQLAlchemyError:

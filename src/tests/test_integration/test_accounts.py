@@ -713,8 +713,10 @@ async def test_login_user_success(client, db_session, jwt_manager, seed_user_gro
     response_data = response.json()
     assert "access_token" in response_data, "Access token is missing in the response."
     assert "refresh_token" in response_data, "Refresh token is missing in the response."
+    assert "token_type" in response_data, "Token type is missing in the response."
     assert response_data["access_token"], "Access token is empty."
     assert response_data["refresh_token"], "Refresh token is empty."
+    assert response_data["token_type"] == "bearer", "Token type should be 'bearer'."
 
     access_token_data = jwt_manager.decode_access_token(response_data["access_token"])
     assert access_token_data["user_id"] == user.id, "Access token does not contain correct user ID."
