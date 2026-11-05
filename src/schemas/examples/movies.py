@@ -5,7 +5,7 @@ movie_item_schema_example = {
     "score": 70,
     "overview": "Princess Odette and Prince Derek are going to a wedding at Princess Mei Li and her beloved Chen. "
                 "But evil forces are at stake and the wedding plans are tarnished and "
-                "true love has difficult conditions."
+                "true love has difficult conditions.",
 }
 
 movie_list_response_schema_example = {
@@ -15,7 +15,7 @@ movie_list_response_schema_example = {
     "prev_page": "/theater/movies/?page=1&per_page=1",
     "next_page": "/theater/movies/?page=3&per_page=1",
     "total_pages": 9933,
-    "total_items": 9933
+    "total_items": 9933,
 }
 
 movie_create_schema_example = {
@@ -29,7 +29,7 @@ movie_create_schema_example = {
     "country": "US",
     "genres": ["Action", "Adventure"],
     "actors": ["John Doe", "Jane Doe"],
-    "languages": ["English", "French"]
+    "languages": ["English", "French"],
 }
 
 
@@ -62,7 +62,7 @@ movie_detail_schema_example = {
     "actors": [actor_schema_example],
     "country": country_schema_example,
     "genres": [genre_schema_example],
-    "languages": [language_schema_example]
+    "languages": [language_schema_example],
 }
 
 movie_update_schema_example = {
