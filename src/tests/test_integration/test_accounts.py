@@ -56,7 +56,7 @@ async def test_register_user_success(client, db_session, seed_user_groups):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("invalid_password, expected_error", [
-    ("short", "Password must contain at least 8 characters."),
+    ("short", "String should have at least 8 characters"),
     ("NoDigitHere!", "Password must contain at least one digit."),
     ("nodigitnorupper@", "Password must contain at least one uppercase letter."),
     ("NOLOWERCASE1@", "Password must contain at least one lower letter."),
