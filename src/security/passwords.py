@@ -38,3 +38,24 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         bool: True if the password is correct, False otherwise.
     """
     return pwd_context.verify(plain_password, hashed_password)
+
+
+class PasswordManager:
+    """
+    Manager class for handling password hashing and verification.
+    """
+    @staticmethod
+    def hash(password: str) -> str:
+        return hash_password(password)
+
+    @staticmethod
+    def verify(plain_password: str, hashed_password: str) -> bool:
+        return verify_password(plain_password, hashed_password)
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return hash_password(password)
+
+    @staticmethod
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        return verify_password(plain_password, hashed_password)
