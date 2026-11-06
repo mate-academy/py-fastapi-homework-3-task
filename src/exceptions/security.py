@@ -19,3 +19,10 @@ class InvalidTokenError(BaseSecurityError):
 
     def __init__(self, message="Invalid token."):
         super().__init__(message)
+
+
+class TokenNotFoundError(BaseSecurityError):
+    """Raised when a token is not found."""
+
+    def __init__(self, message="Token not found."):
+        super().__init__(message)
