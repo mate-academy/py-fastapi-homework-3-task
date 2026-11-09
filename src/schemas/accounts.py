@@ -7,10 +7,25 @@ class UserRegistrationRequestSchema(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return accounts_validators.validate_email(value)
+
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return accounts_validators.validate_password_strength(value)
+
 
 class UserRegistrationResponseSchema(BaseModel):
     id: int
     email: EmailStr
+
+    model_config = {
+        "from_attributes": True
+    }
 
 
 class UserActivationRequestSchema(BaseModel):
@@ -40,7 +55,7 @@ class UserLoginRequestSchema(BaseModel):
 class UserLoginResponseSchema(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str
+    token_type: str = "bearer"
 
 
 class TokenRefreshRequestSchema(BaseModel):
