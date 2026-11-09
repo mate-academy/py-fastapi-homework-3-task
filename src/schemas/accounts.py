@@ -2,24 +2,50 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from database import accounts_validators
 
+
 class UserRegistrationRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+    password: str
+
 
 class UserRegistrationResponseSchema(BaseModel):
-    pass
+    id: int
+    email: EmailStr
+
+
 class UserActivationRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+    token: str
+
+
 class MessageResponseSchema(BaseModel):
-    pass
+    message: str
+
+
 class PasswordResetRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+
+
 class PasswordResetCompleteRequestSchema(BaseModel):
-    pass
-class UserLoginResponseSchema(BaseModel):
-    pass
+    email: EmailStr
+    token: str
+    password: str
+
+
 class UserLoginRequestSchema(BaseModel):
-    pass
+    email: EmailStr
+    password: str
+
+
+class UserLoginResponseSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
 class TokenRefreshRequestSchema(BaseModel):
-    pass
+    refresh_token: str
+
+
 class TokenRefreshResponseSchema(BaseModel):
-    pass
+    access_token: str
