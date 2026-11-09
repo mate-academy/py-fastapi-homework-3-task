@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date as Date, datetime
 from typing import Optional, List
 
 from pydantic import BaseModel, Field, field_validator
@@ -76,7 +76,7 @@ class ActorSchema(BaseModel):
 
 class MovieBaseSchema(BaseModel):
     name: str = Field(..., max_length=255)
-    date: date
+    date: Date
     score: float = Field(..., ge=0, le=100)
     overview: str
     status: MovieStatusEnum
@@ -116,7 +116,7 @@ class MovieDetailSchema(MovieBaseSchema):
 class MovieListItemSchema(BaseModel):
     id: int
     name: str
-    date: date
+    date: Date
     score: float
     overview: str
 
@@ -149,7 +149,7 @@ class MovieListResponseSchema(BaseModel):
 
 class MovieCreateSchema(BaseModel):
     name: str
-    date: date
+    date: Date
     score: float = Field(..., ge=0, le=100)
     overview: str
     status: MovieStatusEnum
@@ -182,7 +182,7 @@ class MovieCreateSchema(BaseModel):
 
 class MovieUpdateSchema(BaseModel):
     name: Optional[str] = None
-    date: Optional[date] = None
+    date: Optional[Date] = None
     score: Optional[float] = Field(None, ge=0, le=100)
     overview: Optional[str] = None
     status: Optional[MovieStatusEnum] = None
