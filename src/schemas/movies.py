@@ -18,7 +18,7 @@ from schemas.examples.movies import (
 
 
 class LanguageSchema(BaseModel):
-    id: int
+    id: int  # noqa: VNE003
     name: str
 
     model_config = {
@@ -32,7 +32,7 @@ class LanguageSchema(BaseModel):
 
 
 class CountrySchema(BaseModel):
-    id: int
+    id: int  # noqa: VNE003
     code: str
     name: Optional[str]
 
@@ -47,7 +47,7 @@ class CountrySchema(BaseModel):
 
 
 class GenreSchema(BaseModel):
-    id: int
+    id: int  # noqa: VNE003
     name: str
 
     model_config = {
@@ -61,7 +61,7 @@ class GenreSchema(BaseModel):
 
 
 class ActorSchema(BaseModel):
-    id: int
+    id: int  # noqa: VNE003
     name: str
 
     model_config = {
@@ -97,7 +97,7 @@ class MovieBaseSchema(BaseModel):
 
 
 class MovieDetailSchema(MovieBaseSchema):
-    id: int
+    id: int  # noqa: VNE003
     country: CountrySchema
     genres: List[GenreSchema]
     actors: List[ActorSchema]
