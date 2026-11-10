@@ -46,7 +46,7 @@ async def register_user(user: UserRegistrationRequestSchema, db: AsyncSession = 
         raise HTTPException(detail="An error occurred during user creation.", status_code=500)
 
 
-@router.post("/login/", status_code=status.HTTP_200_OK)
+@router.post("/login/", status_code=status.HTTP_201_CREATED)
 async def login(
         user: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
@@ -174,7 +174,7 @@ async def reset_password_complete(payload: PasswordResetCompleteRequest, db: Asy
     return {"message": "Password reset successfully."}
 
 
-@router.post("/refresh/", status_code=status.HTTP_200_OK)
+@router.post("/refresh/", status_code=status.HTTP_201_CREATED)
 async def refresh_token(
     payload: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
