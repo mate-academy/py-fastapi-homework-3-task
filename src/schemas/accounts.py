@@ -22,7 +22,7 @@ class UserRegistrationRequestSchema(UserBase):
 
 
 class UserRead(UserBase):
-    id: int  # noqa: VNE003
+    id: int
 
     class Config:
         from_attributes = True
