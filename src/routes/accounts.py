@@ -174,7 +174,7 @@ async def reset_password_complete(payload: PasswordResetCompleteRequest, db: Asy
     return {"message": "Password reset successfully."}
 
 
-@router.post("/refresh/", status_code=status.HTTP_201_CREATED)
+@router.post("/refresh/", status_code=status.HTTP_200_OK)
 async def refresh_token(
     payload: TokenRefreshRequestSchema,
     db: AsyncSession = Depends(get_db),
