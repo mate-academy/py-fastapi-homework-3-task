@@ -46,7 +46,7 @@ async def register_user(user: UserRegistrationRequestSchema, db: AsyncSession = 
         raise HTTPException(detail="An error occurred during user creation.", status_code=500)
 
 
-@router.post("/login/", status_code=status.HTTP_201_CREATED)
+@router.post("/login/", status_code=status.HTTP_200_OK)
 async def login(
         user: UserLoginRequestSchema,
         db: AsyncSession = Depends(get_db),
