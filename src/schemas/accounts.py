@@ -59,3 +59,8 @@ class UserLoginRequestSchema(UserBase):
 
 class TokenRefreshRequestSchema(BaseModel):
     refresh_token: str
+
+
+class UserRegistrationResponseSchema(BaseModel):
+    id: int
+    email: EmailStr

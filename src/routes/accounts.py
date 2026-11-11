@@ -12,13 +12,10 @@ from config import get_jwt_auth_manager, get_settings, BaseAppSettings
 from database import (
     get_db,
     UserModel,
-    UserGroupModel,
-    UserGroupEnum,
     ActivationTokenModel,
     PasswordResetTokenModel,
     RefreshTokenModel, crud
 )
-from exceptions import BaseSecurityError, security
 from schemas.accounts import (
     ActivateAccountRequest,
     TokenRefreshRequestSchema,
@@ -26,15 +23,14 @@ from schemas.accounts import (
     UserRegistrationRequestSchema,
     UserLoginRequestSchema,
     PasswordResetCompleteRequest,
+    UserRegistrationResponseSchema,
 )
 from security.interfaces import JWTAuthManagerInterface
-from security.passwords import verify_password
-from security import token_manager
 
 router = APIRouter()
 
 
-@router.post("/register/", status_code=status.HTTP_201_CREATED)
+@router.post("/register/", response_model=UserRegistrationResponseSchema, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserRegistrationRequestSchema, db: AsyncSession = Depends(get_db)):
     db_user = await crud.get_user_by_email(db, email=user.email)
     if db_user:
