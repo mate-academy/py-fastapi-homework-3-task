@@ -54,18 +54,18 @@ async def register_user(
     user_data: UserRegistrationRequestSchema,
     db: AsyncSession = Depends(get_db),
 ) -> UserModel:
-    existing_user_result = await db.execute(
-        select(UserModel).where(UserModel.email == user_data.email)
-    )
-    existing_user = existing_user_result.scalars().first()
-
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"A user with this email {user_data.email} already exists.",
-        )
-
     try:
+        existing_user_result = await db.execute(
+            select(UserModel).where(UserModel.email == user_data.email)
+        )
+        existing_user = existing_user_result.scalars().first()
+
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A user with this email {user_data.email} already exists.",
+            )
+
         user_group_result = await db.execute(
             select(UserGroupModel).where(
                 UserGroupModel.name == UserGroupEnum.USER
@@ -94,6 +94,9 @@ async def register_user(
         await db.refresh(user)
 
         return user
+
+    except HTTPException:
+        raise
 
     except Exception as error:
         await db.rollback()
