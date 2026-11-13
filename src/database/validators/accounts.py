@@ -1,6 +1,11 @@
+import os
 import re
-
+from datetime import datetime, timedelta
+from http.client import HTTPException
+from dotenv import load_dotenv
 import email_validator
+
+load_dotenv()
 
 
 def validate_password_strength(password: str) -> str:
