@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr, field_validator
 from database import accounts_validators
 
 
-class UserRegistrationRequestSchema(BaseModel):
+class BaseEmailPasswordSchema(BaseModel):
     email: EmailStr
     password: str
 
@@ -12,11 +12,14 @@ class UserRegistrationRequestSchema(BaseModel):
     def validate_email(cls, value: str) -> str:
         return accounts_validators.validate_email(value)
 
-
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
         return accounts_validators.validate_password_strength(value)
+
+
+class UserRegistrationRequestSchema(BaseEmailPasswordSchema):
+    pass
 
 
 class UserRegistrationResponseSchema(BaseModel):
@@ -32,6 +35,11 @@ class UserActivationRequestSchema(BaseModel):
     email: EmailStr
     token: str
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return accounts_validators.validate_email(value)
+
 
 class MessageResponseSchema(BaseModel):
     message: str
@@ -40,16 +48,18 @@ class MessageResponseSchema(BaseModel):
 class PasswordResetRequestSchema(BaseModel):
     email: EmailStr
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return accounts_validators.validate_email(value)
 
-class PasswordResetCompleteRequestSchema(BaseModel):
-    email: EmailStr
+
+class PasswordResetCompleteRequestSchema(BaseEmailPasswordSchema):
     token: str
-    password: str
 
 
-class UserLoginRequestSchema(BaseModel):
-    email: EmailStr
-    password: str
+class UserLoginRequestSchema(BaseEmailPasswordSchema):
+    pass
 
 
 class UserLoginResponseSchema(BaseModel):
