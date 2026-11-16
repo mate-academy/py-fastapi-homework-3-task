@@ -38,7 +38,7 @@ class UserActivationRequestSchema(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        return accounts_validators.validate_email(value)
+        return validate_email(value)
 
 
 class MessageResponseSchema(BaseModel):
@@ -51,7 +51,7 @@ class PasswordResetRequestSchema(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        return accounts_validators.validate_email(value)
+        return validate_email(value)
 
 
 class PasswordResetCompleteRequestSchema(BaseEmailPasswordSchema):
