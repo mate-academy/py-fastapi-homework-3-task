@@ -113,7 +113,13 @@ async def activate_account(
 
     now_utc = datetime.now(timezone.utc)
 
-    if not token_record or token_record.user.is_active:
+    if not token_record:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired activation token."
+        )
+
+    if token_record.user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User account is already active."
@@ -211,6 +217,7 @@ async def reset_password(
 
     try:
         user.password = hash_password(data.password)
+        db.add(user)
         await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
@@ -302,7 +309,7 @@ async def refresh_access_token(
     stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == token_data.refresh_token)
     result = await db.execute(stmt)
     refresh_token_record = result.scalars().first()
-    if not refresh_token_record or refresh_token_record.user.id != user_id:
+    if not refresh_token_record:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token not found.",
@@ -311,7 +318,7 @@ async def refresh_access_token(
     stmt = select(UserModel).where(UserModel.id == user_id)
     result = await db.execute(stmt)
     user = result.scalars().first()
-    if not user:
+    if not user or refresh_token_record.user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found.",
