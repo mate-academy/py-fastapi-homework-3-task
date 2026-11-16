@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import cast
 
 from fastapi import APIRouter, Depends, status, HTTPException
+from flake8.formatting import default
 from sqlalchemy import select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -111,7 +112,14 @@ async def activate_account(
     token_record = result.scalars().first()
 
     now_utc = datetime.now(timezone.utc)
-    if not token_record or cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
+
+    if not token_record or token_record.user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User account is already active."
+        )
+
+    if cast(datetime, token_record.expires_at).replace(tzinfo=timezone.utc) < now_utc:
         if token_record:
             await db.delete(token_record)
             await db.commit()
@@ -121,12 +129,6 @@ async def activate_account(
         )
 
     user = token_record.user
-    if user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User account is already active."
-        )
-
     user.is_active = True
     await db.delete(token_record)
     await db.commit()
@@ -208,7 +210,7 @@ async def reset_password(
         )
 
     try:
-        user.password = data.password
+        user.password = hash_password(data.password)
         await db.delete(token_record)
         await db.commit()
     except SQLAlchemyError:
@@ -300,7 +302,7 @@ async def refresh_access_token(
     stmt = select(RefreshTokenModel).where(RefreshTokenModel.token == token_data.refresh_token)
     result = await db.execute(stmt)
     refresh_token_record = result.scalars().first()
-    if not refresh_token_record:
+    if not refresh_token_record or refresh_token_record.user.id != user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token not found.",
