@@ -216,7 +216,7 @@ async def reset_password(
         )
 
     try:
-        user.password = hash_password(data.password)
+        user.password = data.password
         db.add(user)
         await db.delete(token_record)
         await db.commit()
