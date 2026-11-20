@@ -1,7 +1,6 @@
 import enum
 from datetime import datetime, date, timedelta, timezone
 from typing import List, Optional
-
 from sqlalchemy import (
     ForeignKey,
     String,
@@ -20,7 +19,6 @@ from sqlalchemy.orm import (
     relationship,
     validates
 )
-
 from database import Base
 from database.validators import accounts as validators
 from security.passwords import hash_password, verify_password
