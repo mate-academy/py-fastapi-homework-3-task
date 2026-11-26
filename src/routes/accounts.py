@@ -101,7 +101,7 @@ async def register(
 
         return UserRegistrationResponseSchema.model_validate(db_user)
 
-    except SQLAlchemyError:
+    except Exception:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -480,6 +480,11 @@ async def get_new_access_token(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found."
+        )
+    if db_user.id != db_refresh_token.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is invalid."
         )
 
     access_token = jwt_manager.create_access_token(data={"user_id": db_user.id})
