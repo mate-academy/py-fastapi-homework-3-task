@@ -61,15 +61,15 @@ async def register_user(
             detail=f"A user with this email {user_data.email} already exists.",
         )
 
-    user_group = await db.scalar(
-        select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
-    )
-    if user_group is None:
-        user_group = UserGroupModel(name=UserGroupEnum.USER)
-        db.add(user_group)
-        await db.flush()
-
     try:
+        user_group = await db.scalar(
+            select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
+        )
+        if user_group is None:
+            user_group = UserGroupModel(name=UserGroupEnum.USER)
+            db.add(user_group)
+            await db.flush()
+
         user = UserModel.create(
             email=normalized_email,
             raw_password=user_data.password,
