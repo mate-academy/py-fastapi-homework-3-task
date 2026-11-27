@@ -52,16 +52,16 @@ async def register_user(
 ):
     normalized_email = user_data.email.strip().lower()
 
-    existing_user = await db.scalar(
-        select(UserModel).where(UserModel.email == normalized_email)
-    )
-    if existing_user is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"A user with this email {user_data.email} already exists.",
-        )
-
     try:
+        existing_user = await db.scalar(
+            select(UserModel).where(UserModel.email == normalized_email)
+        )
+        if existing_user is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A user with this email {user_data.email} already exists.",
+            )
+
         user_group = await db.scalar(
             select(UserGroupModel).where(UserGroupModel.name == UserGroupEnum.USER)
         )
@@ -83,6 +83,9 @@ async def register_user(
 
         await db.commit()
         await db.refresh(user)
+    except HTTPException:
+        await db.rollback()
+        raise
     except (SQLAlchemyError, ValueError) as exc:
         await db.rollback()
         raise HTTPException(
